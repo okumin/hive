@@ -1428,41 +1428,23 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
    * the leaf tasks of Y must have the root tasks of X as its child tasks.
    */
   private void linkRealDependencies(List<CTEClause> execution) {
-    LinkedHashMap<CTEClause, LinkedHashSet<Task<?>>> dependentTasks = new LinkedHashMap<>();
+    LinkedHashMap<CTEClause, List<Task<?>>> dependentTasks = new LinkedHashMap<>();
     for (CTEClause cte : execution) {
       List<Task<?>> tasks = getRealTasks(cte);
       if (tasks == null) {
-        // This CTE will be executed as a part of other CTEs or a root statement
         continue;
       }
-      for (CTEClause dependency : findRealDependencies(cte)) {
+      for (CTEClause dependency : listRealDependencies(cte)) {
         if (!dependentTasks.containsKey(dependency)) {
-          dependentTasks.put(dependency, new LinkedHashSet<>());
+          dependentTasks.put(dependency, new ArrayList<>());
         }
         dependentTasks.get(dependency).addAll(tasks);
       }
     }
     for (CTEClause dependency : dependentTasks.keySet()) {
       // This operation must be performed only once per CTE since it updates the leaves
-      List<Task<?>> sources = Task.findLeafs(dependency.getTasks());
+      List<Task<?>> sources = Task.findLeafs(getRealTasks(dependency));
       linkTasks(sources, dependentTasks.get(dependency));
-    }
-  }
-
-  // List parent CTEs which have actual tasks
-  private static List<CTEClause> findRealDependencies(CTEClause cte) {
-    List<CTEClause> dependencies = new ArrayList<>();
-    addRealDependencies(cte, dependencies);
-    return dependencies;
-  }
-
-  private static void addRealDependencies(CTEClause cte, List<CTEClause> acc) {
-    for (CTEClause parent : cte.parents) {
-      if (parent.source == null) {
-        addRealDependencies(parent, acc);
-      } else {
-        acc.add(parent);
-      }
     }
   }
 
@@ -1482,24 +1464,29 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
       if (tasks == null) {
         continue;
       }
-      if (hasRealDependencies(cte)) {
-        continue;
+      if (listRealDependencies(cte).isEmpty()) {
+        realRootTasks.addAll(tasks);
       }
-      realRootTasks.addAll(tasks);
     }
     return realRootTasks;
   }
 
-  private static boolean hasRealDependencies(CTEClause cte) {
+  // List parent CTEs which have actual tasks
+  private LinkedHashSet<CTEClause> listRealDependencies(CTEClause cte) {
+    LinkedHashSet<CTEClause> realDependencies = new LinkedHashSet<>();
+    collectRealDependencies(cte, realDependencies);
+    return realDependencies;
+  }
+
+  private void collectRealDependencies(CTEClause cte, LinkedHashSet<CTEClause> realDependencies) {
     for (CTEClause parent : cte.parents) {
-      if (parent.source != null) {
-        return true;
-      }
-      if (hasRealDependencies(parent)) {
-        return true;
+      if (getRealTasks(parent) == null) {
+        // This CTE will be executed as a part of other CTEs or a root statement
+        collectRealDependencies(parent, realDependencies);
+      } else {
+        realDependencies.add(parent);
       }
     }
-    return false;
   }
 
   Table materializeCTE(String cteName, CTEClause cte) throws HiveException {

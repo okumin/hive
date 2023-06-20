@@ -42,11 +42,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
-<<<<<<< HEAD
-import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
-=======
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
->>>>>>> 1558b1ad12 (HIVE-12679: Allow users to be able to specify an implementation of IMetaStoreClient via HiveConf)
+import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
 import org.apache.hadoop.hive.metastore.PartitionDropOptions;
 import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.Database;
@@ -1010,7 +1007,6 @@ public class TestHive {
     assertTrue(prevHiveObj != newHiveObj);
   }
 
-<<<<<<< HEAD
   public void testFireInsertEvent() throws Throwable {
     Hive hiveDb = Hive.getWithFastCheck(hiveConf, false);
     String tableName = "test_fire_insert_event";
@@ -1074,7 +1070,6 @@ public class TestHive {
     return "";
   }
 
-=======
   @Test
   public void testLoadingHiveMetaStoreClientFactory() throws Throwable {
     String factoryClassName = SessionHiveMetaStoreClientFactory.class.getName();
@@ -1111,7 +1106,6 @@ public class TestHive {
     }
   }
 
->>>>>>> 1558b1ad12 (HIVE-12679: Allow users to be able to specify an implementation of IMetaStoreClient via HiveConf)
   // shamelessly copied from Path in hadoop-2
   private static final String SEPARATOR = "/";
   private static final char SEPARATOR_CHAR = '/';

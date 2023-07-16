@@ -128,6 +128,7 @@ public class GenTezUtils {
       // max we allow tez to pick
       int maxPartition = Math.max(1, (int) (nReducers * maxPartitionFactor));
       maxPartition = (maxPartition > maxReducers) ? maxReducers : maxPartition;
+      LOG.info("HIVE-27050: max partition factor={}, max partition={}", maxPartitionFactor, maxPartition);
 
       // reduce only if the parameters are significant
       final float minThreshold = context.conf.getFloatVar(HiveConf.ConfVars.TEZ_AUTO_REDUCER_PARALLELISM_MIN_THRESHOLD);

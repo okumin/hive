@@ -129,7 +129,6 @@ import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreUtils;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.PartitionDropOptions;
-import org.apache.hadoop.hive.metastore.RetryingMetaStoreClient;
 import org.apache.hadoop.hive.metastore.SynchronizedMetaStoreClient;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.Warehouse;
@@ -5766,12 +5765,7 @@ private void constructOneLBLocationMap(FileStatus fSta,
       }
     };
 
-    if (conf.getBoolVar(ConfVars.METASTORE_FASTPATH)) {
-      return new SessionHiveMetaStoreClient(conf, hookLoader, allowEmbedded);
-    } else {
-      return RetryingMetaStoreClient.getProxy(conf, hookLoader, metaCallTimeMap,
-          SessionHiveMetaStoreClient.class.getName(), allowEmbedded);
-    }
+    return HiveMetaStoreClientFactory.createMetaStoreClient(conf, hookLoader, allowEmbedded, metaCallTimeMap);
   }
 
   @Nullable

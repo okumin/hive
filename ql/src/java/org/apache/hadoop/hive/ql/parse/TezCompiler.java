@@ -122,6 +122,7 @@ import org.apache.hadoop.hive.ql.optimizer.stats.annotation.AnnotateWithStatisti
 import org.apache.hadoop.hive.ql.plan.AggregationDesc;
 import org.apache.hadoop.hive.ql.plan.AppMasterEventDesc;
 import org.apache.hadoop.hive.ql.plan.BaseWork;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
 import org.apache.hadoop.hive.ql.plan.DynamicPruningEventDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
@@ -2141,7 +2142,7 @@ public class TezCompiler extends TaskCompiler {
       fsOpsAll.addAll(fsOps);
     }
 
-    Map<Operator<?>, Integer> processedOperators = new IdentityHashMap<>();
+    Map<Operator<?>, BucketFunction> processedOperators = new IdentityHashMap<>();
     for (FileSinkOperator fsOp : fsOpsAll) {
       // Look for direct parent ReduceSinkOp
       // If there are more than 1 parent, bail out.
@@ -2155,19 +2156,19 @@ public class TezCompiler extends TaskCompiler {
         }
 
         // Found the target RSOp 0
-        int bucketingVersion = fsOp.getConf().getTableInfo().getBucketingVersion();
-        if (fsOp.getConf().getTableInfo().getBucketingVersion() == -1) {
+        BucketFunction bucketFunction = fsOp.getConf().getTable().getBucketFunction();
+        if (fsOp.getConf().getTable().getBucketFunction() == null) {
           break;
         }
-        if (fsOp.getConf().getTableInfo().getBucketingVersion() != fsOp.getConf().getBucketingVersion()) {
+        if (!fsOp.getConf().getTable().getBucketFunction().equals(fsOp.getConf().getBucketFunction())) {
           throw new RuntimeException("FsOp bucketingVersions is inconsistent with its tableinfo");
         }
-        if (processedOperators.containsKey(parent) && processedOperators.get(parent) != bucketingVersion) {
+        if (processedOperators.containsKey(parent) && !processedOperators.get(parent).equals(bucketFunction)) {
           throw new SemanticException(String.format(
-              "Operator (%s) is already processed and is using bucketingVersion(%d); so it can't be changed to %d ",
-              parent, processedOperators.get(parent), bucketingVersion));
+              "Operator (%s) is already processed and is using bucketingVersion(%s); so it can't be changed to %s ",
+              parent, processedOperators.get(parent), bucketFunction));
         }
-        processedOperators.put(parent, bucketingVersion);
+        processedOperators.put(parent, bucketFunction);
 
         break;
       }

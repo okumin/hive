@@ -40,7 +40,7 @@ public abstract class AbstractOperatorDesc implements OperatorDesc {
   protected long memNeeded = 0;
   protected long memAvailable = 0;
   protected String runtimeStatsTmpDir;
-  protected int bucketingVersion = -2;
+  protected BucketFunction bucketFunction;
 
   /**
    * A map of output column name to input expression map. This is used by
@@ -177,13 +177,13 @@ public abstract class AbstractOperatorDesc implements OperatorDesc {
   }
 
   @Override
-  public int getBucketingVersion() {
-    return bucketingVersion;
+  public void setBucketFunction(BucketFunction bucketFunction) {
+    this.bucketFunction = bucketFunction;
   }
 
   @Override
-  public void setBucketingVersion(int bucketingVersion) {
-    this.bucketingVersion = bucketingVersion;
+  public BucketFunction getBucketFunction() {
+    return bucketFunction;
   }
 
   @Override

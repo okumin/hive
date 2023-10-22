@@ -41,6 +41,8 @@ import org.apache.hadoop.hive.ql.lib.SemanticNodeProcessor;
 import org.apache.hadoop.hive.ql.lib.SemanticRule;
 import org.apache.hadoop.hive.ql.parse.ParseContext;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
+import org.apache.hadoop.hive.ql.plan.HiveBucketFunctionV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,28 +153,29 @@ public class BucketVersionPopulator extends Transform {
               // mandatory first
               return r;
             }
-            r = Integer.compare(i2.bucketingVersion, i1.bucketingVersion);
-            if (r != 0) {
-              // prefer higher version if avail
-              return r;
-            }
+            // TODO
+            //r = Integer.compare(i2.bucketingVersion, i1.bucketingVersion);
+            //if (r != 0) {
+            //  // prefer higher version if avail
+            //  return r;
+            //}
             r = i1.op.toString().compareTo(i2.op.toString());
             return r;
           }
         };
     private Operator<?> op;
-    private int bucketingVersion;
+    private BucketFunction bucketFunction;
     private InfoType infoType;
 
-    public OperatorBucketingVersionInfo(Operator<?> op, InfoType infoType, int bucketingVersion) {
+    public OperatorBucketingVersionInfo(Operator<?> op, InfoType infoType, BucketFunction bucketFunction) {
       this.op = op;
       this.infoType = infoType;
-      this.bucketingVersion = bucketingVersion;
+      this.bucketFunction = bucketFunction;
     }
 
     @Override
     public String toString() {
-      return String.format("[op: %s, bucketingVersion=%d, infoType=%s]", op, bucketingVersion, infoType);
+      return String.format("[op: %s, bucketFunction=%s, infoType=%s]", op, bucketFunction, infoType);
     }
   }
 
@@ -181,7 +184,7 @@ public class BucketVersionPopulator extends Transform {
    */
   private static class OpGroup {
     Set<Operator<?>> members = Sets.newIdentityHashSet();
-    int version = -1;
+    BucketFunction bucketFunction;
 
     public OpGroup() {
     }
@@ -192,8 +195,8 @@ public class BucketVersionPopulator extends Transform {
 
     public void setBucketVersion() {
       for (Operator<?> operator : members) {
-        operator.getConf().setBucketingVersion(version);
-        LOG.debug("Bucketing version for {} is set to {}", operator, version);
+        operator.getConf().setBucketFunction(bucketFunction);
+        LOG.debug("Bucket function for {} is set to {}", operator, bucketFunction);
       }
     }
 
@@ -202,20 +205,20 @@ public class BucketVersionPopulator extends Transform {
       for (Operator<?> operator : members) {
         if (operator instanceof TableScanOperator) {
           TableScanOperator tso = (TableScanOperator) operator;
-          int bucketingVersion = tso.getConf().getTableMetadata().getBucketingVersion();
+          BucketFunction bucketFunction = tso.getConf().getBucketFunction();
           int numBuckets = tso.getConf().getNumBuckets();
           if (numBuckets > 1) {
-            ret.add(new OperatorBucketingVersionInfo(operator, InfoType.MANDATORY, bucketingVersion));
+            ret.add(new OperatorBucketingVersionInfo(operator, InfoType.MANDATORY, bucketFunction));
           } else {
             LOG.info("not considering bucketingVersion for: {} because it has {}<2 buckets ", tso, numBuckets);
           }
         }
         if (operator instanceof FileSinkOperator) {
           FileSinkOperator fso = (FileSinkOperator) operator;
-          int bucketingVersion = fso.getConf().getTableInfo().getBucketingVersion();
+          BucketFunction bucketFunction = fso.getConf().getBucketFunction();
           // for FileSinkOperator-s keeping the RS side in sync w.r.t to the bucketing version is beneficial
           // but since they are internally compute the bucket number with the correct algo they don't rely on it.
-          ret.add(new OperatorBucketingVersionInfo(operator, InfoType.OPTIONAL, bucketingVersion));
+          ret.add(new OperatorBucketingVersionInfo(operator, InfoType.OPTIONAL, bucketFunction));
         }
       }
       return ret;
@@ -231,23 +234,23 @@ public class BucketVersionPopulator extends Transform {
       } catch (Exception e) {
         throw new RuntimeException("Error setting bucketingVersion for group: " + bucketingVersions, e);
       }
-      if (version == -1) {
-        // use version 2 if possible
-        version = 2;
+      if (bucketFunction == null) {
+        bucketFunction = HiveBucketFunctionV2.get();
       }
     }
 
     private void setVersion(OperatorBucketingVersionInfo info) {
-      int newVersion = info.bucketingVersion;
-      if (version == newVersion || newVersion == -1) {
+      BucketFunction newBucketFunction = info.bucketFunction;
+      if (bucketFunction == newBucketFunction || newBucketFunction == null) {
         return;
       }
-      if (version == -1) {
-        version = newVersion;
+      if (bucketFunction == null) {
+        bucketFunction = newBucketFunction;
         return;
       }
       if (info.infoType == InfoType.OPTIONAL) {
-        LOG.debug("Ignoring version preference for {}; because {} is already set and its OPTIONAL", info.op, version);
+        LOG.debug("Ignoring version preference for {}; because {} is already set and its OPTIONAL", info.op,
+            bucketFunction);
         return;
       }
       throw new RuntimeException("Unable to set version");

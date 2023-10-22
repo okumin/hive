@@ -135,6 +135,8 @@ public class FileSinkDesc extends AbstractOperatorDesc implements IStatsGatherDe
 
   private boolean isCTASorCM = false;
 
+  private BucketFunction bucketFunction;
+
   public FileSinkDesc() {
   }
 
@@ -145,7 +147,7 @@ public class FileSinkDesc extends AbstractOperatorDesc implements IStatsGatherDe
       final boolean multiFileSpray, final boolean canBeMerged, final int numFiles, final int totalFiles,
       final List<ExprNodeDesc> partitionCols, final DynamicPartitionCtx dpCtx, Path destPath, Long mmWriteId,
       boolean isMmCtas, boolean isInsertOverwrite, boolean isQuery, boolean isCTASorCM, boolean isDirectInsert,
-      AcidUtils.Operation acidOperation, boolean deleteOfSplitUpdate) {
+      AcidUtils.Operation acidOperation, boolean deleteOfSplitUpdate, BucketFunction bucketFunction) {
     this.dirName = dirName;
     setTableInfo(tableInfo);
     this.compressed = compressed;
@@ -166,6 +168,7 @@ public class FileSinkDesc extends AbstractOperatorDesc implements IStatsGatherDe
     this.isDirectInsert = isDirectInsert;
     this.acidOperation = acidOperation;
     this.deleteOfSplitUpdate = deleteOfSplitUpdate;
+    this.bucketFunction = bucketFunction;
   }
 
   public FileSinkDesc(final Path dirName, final TableDesc tableInfo,
@@ -187,7 +190,7 @@ public class FileSinkDesc extends AbstractOperatorDesc implements IStatsGatherDe
   public Object clone() throws CloneNotSupportedException {
     FileSinkDesc ret = new FileSinkDesc(dirName, tableInfo, compressed, destTableId, multiFileSpray, canBeMerged,
         numFiles, totalFiles, partitionCols, dpCtx, destPath, mmWriteId, isMmCtas, isInsertOverwrite, isQuery,
-        isCTASorCM, isDirectInsert, acidOperation, deleteOfSplitUpdate);
+        isCTASorCM, isDirectInsert, acidOperation, deleteOfSplitUpdate, bucketFunction);
     ret.setCompressCodec(compressCodec);
     ret.setCompressType(compressType);
     ret.setGatherStats(gatherStats);
@@ -302,7 +305,6 @@ public class FileSinkDesc extends AbstractOperatorDesc implements IStatsGatherDe
 
   public void setTableInfo(final TableDesc tableInfo) {
     this.tableInfo = tableInfo;
-    bucketingVersion = tableInfo.getBucketingVersion();
   }
 
   @Explain(displayName = "compressed")
@@ -680,9 +682,14 @@ public class FileSinkDesc extends AbstractOperatorDesc implements IStatsGatherDe
     return isMmCtas;
   }
 
+  @Explain(displayName = "bucketingType", explainLevels = { Level.EXTENDED })
+  public String getBucketingTypeForExplain() {
+    return getBucketFunction().getBucketingType();
+  }
+
   @Explain(displayName = "bucketingVersion", explainLevels = { Level.EXTENDED })
   public int getBucketingVersionForExplain() {
-    return getBucketingVersion();
+    return getBucketFunction().getBucketingVersion();
   }
   /**
    * Whether this is CREATE TABLE SELECT or CREATE MATERIALIZED VIEW statement

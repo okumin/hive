@@ -56,6 +56,7 @@ import org.apache.hadoop.hive.ql.parse.GenTezUtils;
 import org.apache.hadoop.hive.ql.parse.OptimizeTezProcContext;
 import org.apache.hadoop.hive.ql.parse.ParseContext;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
 import org.apache.hadoop.hive.ql.plan.CommonMergeJoinDesc;
 import org.apache.hadoop.hive.ql.plan.DummyStoreDesc;
@@ -545,7 +546,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     OpTraits opTraits = new OpTraits(joinOp.getOpTraits().getBucketColNames(), numBuckets,
         joinOp.getOpTraits().getSortCols(), numReduceSinks);
     mergeJoinOp.setOpTraits(opTraits);
-    mergeJoinOp.getConf().setBucketingVersion(joinOp.getConf().getBucketingVersion());
+    mergeJoinOp.getConf().setBucketFunction(joinOp.getConf().getBucketFunction());
     preserveOperatorInfos(mergeJoinOp, joinOp, context);
 
     for (Operator<? extends OperatorDesc> parentOp : joinOp.getParentOperators()) {
@@ -828,7 +829,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     // tables and version 2 for new tables. All the inputs to the SMB must be
     // from same version. This only applies to tables read directly and not
     // intermediate outputs of joins/groupbys
-    int bucketingVersion = -1;
+    BucketFunction bucketFunction = null;
     for (Operator<? extends OperatorDesc> parentOp : joinOp.getParentOperators()) {
       // Check if the parent is coming from a table scan, if so, what is the version of it.
       assert parentOp.getParentOperators() != null && parentOp.getParentOperators().size() == 1;
@@ -842,10 +843,13 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       }
 
       if (op instanceof TableScanOperator) {
-        int localVersion = ((TableScanOperator) op).getConf().getTableMetadata().getBucketingVersion();
-        if (bucketingVersion == -1) {
-          bucketingVersion = localVersion;
-        } else if (bucketingVersion != localVersion) {
+        BucketFunction localFunction = ((TableScanOperator) op)
+            .getConf()
+            .getTableMetadata()
+            .getBucketFunctionForBetterQueryPlan();
+        if (bucketFunction == null) {
+          bucketFunction = localFunction;
+        } else if (bucketFunction != localFunction) {
           // versions dont match, return false.
           LOG.debug("SMB Join can't be performed due to bucketing version mismatch");
           return false;

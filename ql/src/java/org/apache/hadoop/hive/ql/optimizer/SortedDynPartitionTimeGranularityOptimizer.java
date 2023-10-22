@@ -211,7 +211,7 @@ public class SortedDynPartitionTimeGranularityOptimizer extends Transform {
       }
       ReduceSinkOperator rsOp = getReduceSinkOp(keyPositions, sortOrder,
           sortNullOrder, allRSCols, granularitySelOp, fsOp.getConf().getWriteType());
-      rsOp.getConf().setBucketingVersion(fsOp.getConf().getBucketingVersion());
+      rsOp.getConf().setBucketFunction(fsOp.getConf().getBucketFunction());
 
       // Create backtrack SelectOp
       final List<ExprNodeDesc> descs = new ArrayList<>(allRSCols.size());

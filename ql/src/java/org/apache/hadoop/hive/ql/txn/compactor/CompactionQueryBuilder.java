@@ -531,7 +531,10 @@ class CompactionQueryBuilder {
         org.apache.hadoop.hive.ql.metadata.Table t =
             Hive.get().getTable(sourceTab.getDbName(), sourceTab.getTableName());
         numBuckets = Math.max(t.getNumBuckets(), numBuckets);
-        bucketingVersion = t.getBucketingVersion();
+        if (!t.getBucketFunction().getBucketingType().equals("hive")) {
+          throw new AssertionError("TODO");
+        }
+        bucketingVersion = t.getBucketFunction().getBucketingVersion();
       } catch (HiveException e) {
         LOG.info("Error finding table {}. Minor compaction result will use 0 buckets.",
             sourceTab.getTableName());

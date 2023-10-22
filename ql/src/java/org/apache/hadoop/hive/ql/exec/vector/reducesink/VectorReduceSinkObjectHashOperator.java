@@ -30,6 +30,7 @@ import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.BucketNumExpression;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpression;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
 import org.apache.hadoop.hive.ql.plan.VectorDesc;
 import org.apache.hadoop.hive.serde2.ByteStream.Output;
@@ -87,7 +88,7 @@ public class VectorReduceSinkObjectHashOperator extends VectorReduceSinkCommonOp
   private transient Object[] partitionFieldValues;
   private transient Random nonPartitionRandom;
 
-  private transient BiFunction<Object[], ObjectInspector[], Integer> hashFunc;
+  private transient BucketFunction hashFunc;
   private transient BucketNumExpression bucketExpr = null;
 
   /** Kryo ctor. */
@@ -184,9 +185,7 @@ public class VectorReduceSinkObjectHashOperator extends VectorReduceSinkCommonOp
     }
 
     // Set hashFunc
-    hashFunc = getConf().getBucketingVersion() == 2 && !vectorDesc.getIsAcidChange() ?
-      ObjectInspectorUtils::getBucketHashCode :
-      ObjectInspectorUtils::getBucketHashCodeOld;
+    hashFunc = getConf().getBucketFunction();
 
     // Set function to evaluate _bucket_number if needed.
     if (reduceSinkKeyExpressions != null) {
@@ -273,14 +272,13 @@ public class VectorReduceSinkObjectHashOperator extends VectorReduceSinkCommonOp
         } else {
           // Compute hashCode from partitions
           partitionVectorExtractRow.extractRow(batch, batchIndex, partitionFieldValues);
-          hashCode = hashFunc.apply(partitionFieldValues, partitionObjectInspectors);
+          hashCode = hashFunc.computeHashCode(partitionFieldValues, partitionObjectInspectors);
         }
 
         // Compute hashCode from buckets
         if (!isEmptyBuckets) {
           bucketVectorExtractRow.extractRow(batch, batchIndex, bucketFieldValues);
-          final int bucketNum = ObjectInspectorUtils.getBucketNumber(
-              hashFunc.apply(bucketFieldValues, bucketObjectInspectors), numBuckets);
+          final int bucketNum = hashFunc.computeBucketNumber(bucketFieldValues, bucketObjectInspectors, numBuckets);
           if (bucketExpr != null) {
             evaluateBucketExpr(batch, batchIndex, bucketNum);
           }

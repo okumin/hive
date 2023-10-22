@@ -225,6 +225,7 @@ import org.apache.hadoop.hive.ql.parse.type.ExprNodeTypeCheck;
 import org.apache.hadoop.hive.ql.parse.type.TypeCheckCtx;
 import org.apache.hadoop.hive.ql.parse.type.TypeCheckProcFactory;
 import org.apache.hadoop.hive.ql.plan.AggregationDesc;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnListDesc;
@@ -8398,7 +8399,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
         canBeMerged, rsCtx.getNumFiles(), rsCtx.getTotalFiles(), rsCtx.getPartnCols(), dpCtx,
         dest_path, mmWriteId, isMmCtas, isInsertOverwrite, qb.getIsQuery(),
         qb.isCTAS() || qb.isMaterializedView(), isDirectInsert, acidOperation,
-            ctx.isDeleteBranchOfUpdate(dest));
+            ctx.isDeleteBranchOfUpdate(dest), dest_tab == null ? null : dest_tab.getBucketFunction());
 
     fileSinkDesc.setMoveTaskId(moveTaskId);
     boolean isHiveServerQuery = SessionState.get().isHiveServerQuery();
@@ -11742,7 +11743,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
    */
   private ExprNodeDesc genSamplePredicate(TableSample ts,
                                           List<String> bucketCols, boolean useBucketCols, String alias,
-                                          RowResolver rwsch, ExprNodeDesc planExpr, int bucketingVersion)
+                                          RowResolver rwsch, ExprNodeDesc planExpr, BucketFunction bucketFunction)
       throws SemanticException {
 
     ExprNodeDesc numeratorExpr = new ExprNodeConstantDesc(
@@ -11771,9 +11772,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
 
     ExprNodeDesc equalsExpr = null;
     {
-      ExprNodeDesc hashfnExpr = new ExprNodeGenericFuncDesc(
-          TypeInfoFactory.intTypeInfo,
-              bucketingVersion == 2 ? new GenericUDFMurmurHash() : new GenericUDFHash(), args);
+      ExprNodeDesc hashfnExpr = new ExprNodeGenericFuncDesc(TypeInfoFactory.intTypeInfo, bucketFunction.asUDF(), args);
       LOG.info("hashfnExpr = " + hashfnExpr);
       ExprNodeDesc andExpr = ExprNodeTypeCheck.getExprNodeDefaultExprProcessor()
           .getFuncExprNodeDesc("&", hashfnExpr, intMaxExpr);
@@ -11968,7 +11967,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
         LOG.info("No need for sample filter");
         ExprNodeDesc samplePredicate = genSamplePredicate(ts, tabBucketCols,
             colsEqual, alias, rwsch, null,
-                tab.getBucketingVersion());
+                tab.getBucketFunction());
         FilterDesc filterDesc = new FilterDesc(
             samplePredicate, true, new SampleDesc(ts.getNumerator(),
             ts.getDenominator(), tabBucketCols, true));
@@ -11981,7 +11980,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
         LOG.info("Need sample filter");
         ExprNodeDesc samplePredicate = genSamplePredicate(ts, tabBucketCols,
             colsEqual, alias, rwsch, null,
-                tab.getBucketingVersion());
+                tab.getBucketFunction());
         FilterDesc filterDesc = new FilterDesc(samplePredicate, true);
         filterDesc.setGenerated(true);
         op = OperatorFactory.getAndMakeChild(filterDesc,
@@ -12013,7 +12012,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
             qb.getParseInfo().setTabSample(alias, tsSample);
             ExprNodeDesc samplePred = genSamplePredicate(tsSample, tab
                 .getBucketCols(), true, alias, rwsch, null,
-                    tab.getBucketingVersion());
+                    tab.getBucketFunction());
             FilterDesc filterDesc = new FilterDesc(samplePred, true,
                 new SampleDesc(tsSample.getNumerator(), tsSample
                     .getDenominator(), tab.getBucketCols(), true));
@@ -12032,7 +12031,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
                 .getFuncExprNodeDesc("rand",
                     new ExprNodeConstantDesc(Integer.valueOf(460476415)));
             ExprNodeDesc samplePred = genSamplePredicate(tsSample, null, false,
-                alias, rwsch, randFunc, tab.getBucketingVersion());
+                alias, rwsch, randFunc, tab.getBucketFunction());
             FilterDesc filterDesc = new FilterDesc(samplePred, true);
             filterDesc.setGenerated(true);
             op = OperatorFactory.getAndMakeChild(filterDesc,

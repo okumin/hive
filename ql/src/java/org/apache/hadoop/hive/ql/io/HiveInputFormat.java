@@ -19,6 +19,9 @@
 package org.apache.hadoop.hive.ql.io;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.util.OptionalInt;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -146,6 +149,10 @@ public class HiveInputFormat<K extends WritableComparable, V extends Writable>
    */
   public static class HiveInputSplit extends FileSplit implements InputSplit,
       Configurable, HashableInputSplit {
+    /**
+     * This breaks a prefixed bucket number out into a single integer
+     */
+    private static final Pattern PREFIXED_BUCKET_ID_REGEX = Pattern.compile("^(0*([0-9]+))_([0-9]+).*");
 
 
     InputSplit inputSplit;
@@ -169,6 +176,36 @@ public class HiveInputFormat<K extends WritableComparable, V extends Writable>
 
     public String inputFormatClassName() {
       return inputFormatClassName;
+    }
+
+    public OptionalInt getBucketId() {
+      if (inputSplit instanceof BucketSplit) {
+        return ((BucketSplit) inputSplit).getBucketId();
+      }
+
+      if (inputSplit instanceof FileSplit) {
+        final String bucketName = ((FileSplit) inputSplit).getPath().getName();
+        Matcher m = PREFIXED_BUCKET_ID_REGEX.matcher(bucketName);
+        if (m.matches()) {
+          if (m.group(2).isEmpty()) {
+            // all zeros
+            return m.group(1).isEmpty() ? OptionalInt.empty() : OptionalInt.of(0);
+          }
+          return OptionalInt.of(Integer.parseInt(m.group(2)));
+        }
+        // Check to see if the bucketName matches the pattern "bucket_([0-9]+).*"
+        // This can happen in ACID cases when we have splits on delta files, where the filenames
+        // are of the form delta_x_y/bucket_a.
+        if (bucketName.startsWith(AcidUtils.BUCKET_PREFIX)) {
+          m = AcidUtils.BUCKET_PATTERN.matcher(bucketName);
+          if (m.find()) {
+            return OptionalInt.of(Integer.parseInt(m.group(1)));
+          }
+          // Note that legacy bucket digit pattern are being ignored here.
+        }
+      }
+
+      return OptionalInt.empty();
     }
 
     @Override

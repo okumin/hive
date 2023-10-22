@@ -338,7 +338,7 @@ public class ReduceSinkDeDuplicationUtils {
     if (cConf.getDistinctColumnIndices().size() >= 2) {
       return null;
     }
-    if (cConf.getBucketingVersion() != pConf.getBucketingVersion()) {
+    if (!cConf.getBucketFunction().equals(pConf.getBucketFunction())) {
       return null;
     }
     Integer moveReducerNumTo = checkNumReducer(cConf.getNumReducers(), pConf.getNumReducers());
@@ -540,7 +540,7 @@ public class ReduceSinkDeDuplicationUtils {
   // ensure SEL does not branch
   protected static boolean checkSelectSingleBranchOnly(ReduceSinkOperator cRS, ReduceSinkOperator pRS) {
     Operator<? extends OperatorDesc> parent = cRS.getParentOperators().get(0);
-    if (cRS.getConf().getBucketingVersion() != pRS.getConf().getBucketingVersion()) {
+    if (!cRS.getConf().getBucketFunction().equals(pRS.getConf().getBucketFunction())) {
       return false;
     }
     while (parent != pRS) {

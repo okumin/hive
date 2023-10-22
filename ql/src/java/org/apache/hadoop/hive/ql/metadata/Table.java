@@ -64,6 +64,9 @@ import org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat;
 import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.TableSpec;
 import org.apache.hadoop.hive.ql.parse.SemanticAnalyzer;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
+import org.apache.hadoop.hive.ql.plan.HiveBucketFunctionV1;
+import org.apache.hadoop.hive.ql.plan.HiveBucketFunctionV2;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.AbstractSerDe;
@@ -552,9 +555,23 @@ public class Table implements Serializable {
     }
   }
 
-  public int getBucketingVersion() {
-    return Utilities.getBucketingVersion(
-        getProperty(hive_metastoreConstants.TABLE_BUCKETING_VERSION));
+  public BucketFunction getBucketFunction() {
+    switch (Utilities.getBucketingVersion(getProperty(hive_metastoreConstants.TABLE_BUCKETING_VERSION))) {
+      case 1:
+        return HiveBucketFunctionV1.get();
+      case 2:
+        return HiveBucketFunctionV2.get();
+      default:
+        return null;
+    }
+  }
+
+  public BucketFunction getBucketFunctionForBetterQueryPlan() {
+    final HiveStorageHandler handler = getStorageHandler();
+    if (handler != null && handler.isBucketed(this)) {
+      return getStorageHandler().getBucketFunction(this);
+    }
+    return getBucketFunction();
   }
 
   @Override

@@ -190,9 +190,7 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
-import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputFormat;
-import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
@@ -2062,6 +2060,7 @@ public final class Utilities {
     return parsedFileName.isCopyFile();
   }
 
+  @Deprecated
   public static String getBucketFileNameFromPathSubString(String bucketName) {
     try {
       return bucketName.split(COPY_KEYWORD)[0];
@@ -2071,15 +2070,7 @@ public final class Utilities {
     }
   }
 
-  /* compute bucket id from from Split */
-  public static int parseSplitBucket(InputSplit split) {
-    if (split instanceof FileSplit) {
-      return getBucketIdFromFile(((FileSplit) split).getPath().getName());
-    }
-    // cannot get this for combined splits
-    return -1;
-  }
-
+  @Deprecated
   public static int getBucketIdFromFile(String bucketName) {
     Matcher m = PREFIXED_BUCKET_ID_REGEX.matcher(bucketName);
     if (m.matches()) {

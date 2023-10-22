@@ -23,14 +23,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 
 import org.apache.hadoop.fs.BlockLocation;
@@ -39,6 +37,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.io.HiveInputFormat;
+import org.apache.hadoop.hive.ql.io.HiveInputFormat.HiveInputSplit;
 import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hive.common.util.ReflectionUtil;
 import org.apache.tez.common.counters.TezCounters;
@@ -339,8 +338,9 @@ public class HiveSplitGenerator extends InputInitializer {
     final String bucketIn = buckets.toString();
     List<InputSplit> filteredSplits = new ArrayList<InputSplit>(splits.length / 2);
     for (InputSplit split : splits) {
-      final int bucket = Utilities.parseSplitBucket(split);
-      if (bucket < 0 || buckets.get(bucket)) {
+      LOG.info("okumin: Split class={}, str={}", split.getClass(), split);
+      final OptionalInt bucket = ((HiveInputSplit) split).getBucketId();
+      if (!bucket.isPresent() || buckets.get(bucket.getAsInt())) {
         // match or UNKNOWN
         filteredSplits.add(split);
       } else {

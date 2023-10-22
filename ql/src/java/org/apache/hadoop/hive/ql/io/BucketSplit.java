@@ -16,11 +16,10 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hive.ql.optimizer;
+package org.apache.hadoop.hive.ql.io;
 
-import org.apache.hadoop.hive.ql.CompilationOpContext;
+import java.util.OptionalInt;
 
-public class TestBucketVersionPopulator {
-
-  CompilationOpContext cCtx = new CompilationOpContext();
+public interface BucketSplit {
+  OptionalInt getBucketId();
 }

@@ -469,9 +469,14 @@ public class ReduceSinkDesc extends AbstractOperatorDesc {
     this.isCompaction = isCompaction;
   }
 
+  @Explain(displayName = "bucketingType", explainLevels = { Level.EXTENDED })
+  public String getBucketingTypeForExplain() {
+    return getBucketFunction().getBucketingType();
+  }
+
   @Explain(displayName = "bucketingVersion", explainLevels = { Level.EXTENDED })
   public int getBucketingVersionForExplain() {
-    return getBucketingVersion();
+    return getBucketFunction().getBucketingVersion();
   }
 
   public List<ExprNodeDesc> getBucketCols() {

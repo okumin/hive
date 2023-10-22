@@ -47,8 +47,6 @@ import org.apache.hadoop.hive.llap.LlapUtil;
 import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
-import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.io.AcidOutputFormat;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.io.RecordUpdater;
@@ -306,13 +304,8 @@ public abstract class AbstractRecordWriter implements RecordWriter {
     if (!isBucketed) {
       return 0;
     }
-    Object[] bucketFields = getBucketFields(row);
-    int bucketingVersion = Utilities.getBucketingVersion(
-      table.getParameters().get(hive_metastoreConstants.TABLE_BUCKETING_VERSION));
 
-    return bucketingVersion == 2 ?
-      ObjectInspectorUtils.getBucketNumber(bucketFields, bucketObjInspectors, totalBuckets) :
-      ObjectInspectorUtils.getBucketNumberOld(bucketFields, bucketObjInspectors, totalBuckets);
+    throw new AssertionError("TODO");
   }
 
   protected List<String> getPartitionValues(final Object row) {

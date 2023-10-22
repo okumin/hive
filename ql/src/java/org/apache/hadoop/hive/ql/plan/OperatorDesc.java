@@ -42,9 +42,9 @@ public interface OperatorDesc extends Serializable, Cloneable {
 
   void fillSignature(Map<String, Object> ret);
 
-  public void setBucketingVersion(int bucketingVersion);
+  void setBucketFunction(BucketFunction bucketFunction);
 
-  public int getBucketingVersion();
+  BucketFunction getBucketFunction();
 
   void addComputedField(String column);
 

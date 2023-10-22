@@ -44,6 +44,7 @@ import org.apache.hadoop.hive.ql.optimizer.ppr.PartitionPruner;
 import org.apache.hadoop.hive.ql.parse.ParseContext;
 import org.apache.hadoop.hive.ql.parse.PrunedPartitionList;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
 import org.apache.hadoop.hive.serde2.io.DateWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -203,8 +204,8 @@ public class FixedBucketPruningOptimizer extends Transform {
       bs.clear();
       PrimitiveObjectInspector bucketOI = (PrimitiveObjectInspector)bucketField.getFieldObjectInspector();
       PrimitiveObjectInspector constOI = PrimitiveObjectInspectorFactory.getPrimitiveWritableObjectInspector(bucketOI.getPrimitiveCategory());
-      // Fetch the bucketing version from table scan operator
-      int bucketingVersion = top.getConf().getTableMetadata().getBucketingVersion();
+      // Fetch the bucket function from table scan operator
+      BucketFunction bucketFunction = top.getConf().getTableMetadata().getBucketFunction();
 
       for (Object literal: literals) {
         PrimitiveObjectInspector origOI = PrimitiveObjectInspectorFactory.getPrimitiveObjectInspectorFromClass(literal.getClass());
@@ -214,14 +215,15 @@ public class FixedBucketPruningOptimizer extends Transform {
           return;
         }
         Object convCols[] = new Object[] {conv.convert(literal)};
-        int n = bucketingVersion == 2 ?
-            ObjectInspectorUtils.getBucketNumber(convCols, new ObjectInspector[]{constOI}, numBuckets) :
-            ObjectInspectorUtils.getBucketNumberOld(convCols, new ObjectInspector[]{constOI}, numBuckets);
+        int n = bucketFunction.computeBucketNumber(convCols, new ObjectInspector[]{constOI}, numBuckets);
         bs.set(n);
-        if (bucketingVersion == 1 && ctxt.isCompat()) {
+        if (bucketFunction.getBucketingType().equals("hive")
+            && bucketFunction.getBucketingVersion() == 1
+            && ctxt.isCompat()) {
+          // TODO: clean up
           int h = ObjectInspectorUtils.getBucketHashCodeOld(convCols, new ObjectInspector[]{constOI});
           // -ve hashcodes had conversion to positive done in different ways in the past
-          // abs() is now obsolete and all inserts now use & Integer.MAX_VALUE 
+          // abs() is now obsolete and all inserts now use & Integer.MAX_VALUE
           // the compat mode assumes that old data could've been loaded using the other conversion
           n = ObjectInspectorUtils.getBucketNumber(Math.abs(h), numBuckets);
           bs.set(n);

@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 import com.google.common.collect.Lists;
 
@@ -68,6 +67,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.HiveFatalException;
 import org.apache.hadoop.hive.ql.metadata.HiveStorageHandler;
 import org.apache.hadoop.hive.ql.metadata.HiveUtils;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.FileSinkDesc;
@@ -143,7 +143,7 @@ public class FileSinkOperator extends TerminalOperator<FileSinkDesc> implements
   private transient Path destTablePath;
   private transient boolean isInsertOverwrite;
   private transient String counterGroup;
-  private transient BiFunction<Object[], ObjectInspector[], Integer> hashFunc;
+  private transient BucketFunction hashFunc;
   public static final String TOTAL_TABLE_ROWS_WRITTEN = "TOTAL_TABLE_ROWS_WRITTEN";
   private transient Set<String> dynamicPartitionSpecs = new HashSet<>();
 
@@ -734,9 +734,7 @@ public class FileSinkOperator extends TerminalOperator<FileSinkDesc> implements
       statsMap.put(getCounterName(Counter.RECORDS_OUT), row_count);
 
       // Setup hashcode
-      hashFunc = conf.getTableInfo().getBucketingVersion() == 2 ?
-          ObjectInspectorUtils::getBucketHashCode :
-          ObjectInspectorUtils::getBucketHashCodeOld;
+      hashFunc = conf.getBucketFunction();
 
       //Counter for number of rows that are associated with a destination table in FileSinkOperator.
       //This count is used to get total number of rows in an insert query.
@@ -1282,7 +1280,7 @@ public class FileSinkOperator extends TerminalOperator<FileSinkDesc> implements
       for(int i = 0; i < partitionEval.length; i++) {
         bucketFieldValues[i] = partitionEval[i].evaluate(row);
       }
-      int keyHashCode = hashFunc.apply(bucketFieldValues, partitionObjectInspectors);
+      int keyHashCode = hashFunc.computeHashCode(bucketFieldValues, partitionObjectInspectors);
       key.setHashCode(keyHashCode);
       int bucketNum = prtner.getBucket(key, null, totalFiles);
       return bucketMap.get(bucketNum);

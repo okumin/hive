@@ -50,6 +50,7 @@ import org.apache.hadoop.hive.ql.parse.AlterTableExecuteSpec;
 import org.apache.hadoop.hive.ql.parse.StorageFormat.StorageHandlerTypes;
 import org.apache.hadoop.hive.ql.parse.TransformSpec;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ColumnStatsDesc;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
@@ -718,4 +719,11 @@ public interface HiveStorageHandler extends Configurable {
             "for a specific column.");
   }
 
+  default boolean isBucketed(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    return false;
+  }
+
+  default BucketFunction getBucketFunction(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    throw new UnsupportedOperationException("Storage handler does not support bucketing features");
+  }
 }

@@ -16,11 +16,19 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hive.ql.optimizer;
+package org.apache.hadoop.hive.ql.plan;
 
-import org.apache.hadoop.hive.ql.CompilationOpContext;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 
-public class TestBucketVersionPopulator {
+public interface BucketFunction {
+  int computeBucketNumber(Object[] bucketFields, ObjectInspector[] bucketFieldInspectors, int numBuckets);
 
-  CompilationOpContext cCtx = new CompilationOpContext();
+  int computeHashCode(Object[] bucketFields, ObjectInspector[] bucketFieldInspectors);
+
+  GenericUDF asUDF();
+
+  String getBucketingType();
+
+  int getBucketingVersion();
 }

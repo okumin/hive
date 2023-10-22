@@ -35,6 +35,7 @@ import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.io.BucketCodec;
 import org.apache.hadoop.hive.ql.io.HiveKey;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
 import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
@@ -113,7 +114,7 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
   protected transient List<List<Integer>> distinctColIndices;
   protected transient Random random;
 
-  protected transient BiFunction<Object[], ObjectInspector[], Integer> hashFunc;
+  protected transient BucketFunction hashFunc;
 
   /**
    * This two dimensional array holds key data and a corresponding Union object
@@ -230,14 +231,11 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
       useUniformHash = conf.getReducerTraits().contains(UNIFORM);
 
       firstRow = true;
+      // TODO: Follow the following statement
       // acidOp flag has to be checked to use JAVA hash which works like
       // identity function for integers, necessary to read RecordIdentifier
       // incase of ACID updates/deletes.
-      boolean acidOp = conf.getWriteType() == AcidUtils.Operation.UPDATE ||
-          conf.getWriteType() == AcidUtils.Operation.DELETE;
-      hashFunc = getConf().getBucketingVersion() == 2 && !acidOp ?
-          ObjectInspectorUtils::getBucketHashCode :
-          ObjectInspectorUtils::getBucketHashCodeOld;
+      hashFunc = getConf().getBucketFunction();
     } catch (Exception e) {
       String msg = "Error initializing ReduceSinkOperator: " + e.getMessage();
       LOG.error(msg, e);
@@ -391,8 +389,7 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
     for (int i = 0; i < bucketEval.length; i++) {
       bucketFieldValues[i] = bucketEval[i].evaluate(row);
     }
-    return ObjectInspectorUtils.getBucketNumber(
-        hashFunc.apply(bucketFieldValues, bucketObjectInspectors), numBuckets);
+    return hashFunc.computeBucketNumber(bucketFieldValues, bucketObjectInspectors, numBuckets);
   }
 
   private void populateCachedDistributionKeys(Object row) throws HiveException {
@@ -447,7 +444,7 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
       for(int i = 0; i < partitionEval.length; i++) {
         bucketFieldValues[i] = partitionEval[i].evaluate(row);
       }
-      keyHashCode = hashFunc.apply(bucketFieldValues, partitionObjectInspectors);
+      keyHashCode = hashFunc.computeHashCode(bucketFieldValues, partitionObjectInspectors);
     }
     int hashCode = buckNum < 0 ? keyHashCode : keyHashCode * 31 + buckNum;
     if (LOG.isTraceEnabled()) {

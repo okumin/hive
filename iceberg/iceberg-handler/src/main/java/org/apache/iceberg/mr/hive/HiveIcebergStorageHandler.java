@@ -19,6 +19,7 @@
 
 package org.apache.iceberg.mr.hive;
 
+// CHECKSTYLE:OFF
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.Serializable;
@@ -94,6 +95,7 @@ import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.parse.StorageFormat;
 import org.apache.hadoop.hive.ql.parse.StorageFormat.StorageHandlerTypes;
 import org.apache.hadoop.hive.ql.parse.TransformSpec;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeConstantDesc;
@@ -107,6 +109,7 @@ import org.apache.hadoop.hive.ql.security.authorization.HiveAuthorizationProvide
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.session.SessionStateUtil;
 import org.apache.hadoop.hive.ql.stats.Partish;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
 import org.apache.hadoop.hive.serde2.AbstractSerDe;
 import org.apache.hadoop.hive.serde2.DefaultFetchFormatter;
 import org.apache.hadoop.hive.serde2.Deserializer;
@@ -115,6 +118,7 @@ import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.Writable;
@@ -179,6 +183,7 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.relocated.com.google.common.collect.Streams;
+import org.apache.iceberg.transforms.Transforms;
 import org.apache.iceberg.types.Conversions;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
@@ -221,6 +226,51 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
               throw new RuntimeException(e);
             }
           };
+
+  private static final class IcebergBucketFunction implements BucketFunction {
+    private static final IcebergBucketFunction INSTANCE = new IcebergBucketFunction();
+
+    private static IcebergBucketFunction get() {
+      return INSTANCE;
+    }
+
+    @Override
+    public int computeBucketNumber(Object[] bucketFields, ObjectInspector[] bucketFieldInspectors, int numBuckets) {
+      final int hashCode = computeHashCode(bucketFields, bucketFieldInspectors);
+      return Transforms.bucket(numBuckets).bind(Types.IntegerType.get()).apply(hashCode);
+    }
+
+    @Override
+    public int computeHashCode(Object[] bucketFields, ObjectInspector[] bucketFieldInspectors) {
+      // for PoC
+      // assert bucketFields.length == 1;
+      // assert bucketFieldInspectors[0].getCategory() == ObjectInspector.Category.PRIMITIVE;
+      // assert ((PrimitiveObjectInspector) bucketFieldInspectors[0]).getPrimitiveCategory()
+      //     == PrimitiveObjectInspector.PrimitiveCategory.INT;
+      final IntObjectInspector oi = (IntObjectInspector) bucketFieldInspectors[0];
+      return oi.get(bucketFields[0]);
+    }
+
+    @Override
+    public GenericUDF asUDF() {
+      return new GenericUDFIcebergBucket();
+    }
+
+    @Override
+    public String getBucketingType() {
+      return "iceberg";
+    }
+
+    @Override
+    public int getBucketingVersion() {
+      return 1;
+    }
+
+    @Override
+    public String toString() {
+      return "IcebergBucketFunction";
+    }
+  }
 
   private static final List<VirtualColumn> ACID_VIRTUAL_COLS = ImmutableList.of(VirtualColumn.PARTITION_SPEC_ID,
       VirtualColumn.PARTITION_HASH, VirtualColumn.FILE_PATH, VirtualColumn.ROW_POSITION);
@@ -1829,6 +1879,37 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
       }
     } else {
       throw new SemanticException(String.format("Unable to find a column with the name: %s", colName));
+    }
+  }
+
+  @Override
+  public boolean isBucketed(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    final List<TransformSpec> specs = getPartitionTransformSpec(hmsTable);
+    if (specs.size() != 1) {
+      // not support yet
+      return false;
+    }
+    final TransformSpec spec = specs.get(0);
+    if (spec.getTransformType() != TransformSpec.TransformType.BUCKET) {
+      // not support yet
+      return false;
+    }
+    if (!spec.getTransformParam().isPresent()) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public BucketFunction getBucketFunction(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    try {
+      final List<TransformSpec> specs = getPartitionTransformSpec(hmsTable);
+      final TransformSpec spec = specs.get(0);
+      hmsTable.setNumBuckets(spec.getTransformParam().get());
+      hmsTable.setBucketCols(Collections.singletonList(spec.getColumnName()));
+      return IcebergBucketFunction.get();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }

@@ -313,7 +313,7 @@ public class SortedDynPartitionOptimizer extends Transform {
       // Ref TEZ-3296
       fsParent.getChildOperators().remove(rsOp);
       fsParent.getChildOperators().add(fsOpIndex, rsOp);
-      rsOp.getConf().setBucketingVersion(fsOp.getConf().getBucketingVersion());
+      rsOp.getConf().setBucketFunction(fsOp.getConf().getBucketFunction());
 
       List<ExprNodeDesc> descs = new ArrayList<ExprNodeDesc>(allRSCols.size());
       List<String> colNames = new ArrayList<String>();

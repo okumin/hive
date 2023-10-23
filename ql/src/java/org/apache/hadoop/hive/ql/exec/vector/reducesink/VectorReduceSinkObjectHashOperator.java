@@ -30,6 +30,7 @@ import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.BucketNumExpression;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpression;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
 import org.apache.hadoop.hive.ql.plan.VectorDesc;
 import org.apache.hadoop.hive.serde2.ByteStream.Output;
@@ -184,9 +185,17 @@ public class VectorReduceSinkObjectHashOperator extends VectorReduceSinkCommonOp
     }
 
     // Set hashFunc
-    hashFunc = getConf().getBucketingVersion() == 2 && !vectorDesc.getIsAcidChange() ?
-      ObjectInspectorUtils::getBucketHashCode :
-      ObjectInspectorUtils::getBucketHashCodeOld;
+    final BucketFunction partitionFunction = getConf().getPartitionFunction();
+    if (partitionFunction != null) {
+      LOG.info("Use {} for partitioning", partitionFunction);
+      hashFunc = partitionFunction::getHashCode;
+    } else if (getConf().getBucketingVersion() == 2 && !vectorDesc.getIsAcidChange()) {
+      LOG.info("Use v2 hash for partitioning");
+      hashFunc = ObjectInspectorUtils::getBucketHashCode;
+    } else {
+      LOG.info("Use v1 hash for partitioning");
+      hashFunc = ObjectInspectorUtils::getBucketHashCodeOld;
+    }
 
     // Set function to evaluate _bucket_number if needed.
     if (reduceSinkKeyExpressions != null) {

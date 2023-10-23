@@ -53,6 +53,7 @@ import org.apache.hadoop.hive.ql.parse.StorageFormat.StorageHandlerTypes;
 import org.apache.hadoop.hive.ql.parse.TransformSpec;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.plan.ColumnStatsDesc;
+import org.apache.hadoop.hive.ql.plan.DynamicBucketCtx;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.FileSinkDesc;
@@ -538,6 +539,15 @@ public interface HiveStorageHandler extends Configurable {
       throws SemanticException {
     Preconditions.checkState(alwaysUnpartitioned(), "Should only be called for table formats where partitioning " +
         "is not handled by Hive but the table format itself. See alwaysUnpartitioned() method.");
+    return null;
+  }
+
+  default boolean isBucketed(org.apache.hadoop.hive.ql.metadata.Table table) throws SemanticException {
+    return false;
+  }
+
+  default DynamicBucketCtx createDynamicBucketContext(org.apache.hadoop.hive.ql.metadata.Table table)
+      throws SemanticException {
     return null;
   }
 

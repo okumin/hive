@@ -55,6 +55,7 @@ import org.apache.iceberg.MetadataColumns;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Partitioning;
 import org.apache.iceberg.Scan;
+import org.apache.iceberg.ScanTaskGroup;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.SchemaParser;
 import org.apache.iceberg.SnapshotRef;
@@ -94,6 +95,7 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.PartitionUtil;
 import org.apache.iceberg.util.SerializationUtil;
+import org.apache.iceberg.util.TableScanUtil;
 
 /**
  * Generic Mrv2 InputFormat API for Iceberg.
@@ -218,8 +220,16 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
       scan = applyConfig(conf, createTableScan(table, conf));
     }
 
-    try (CloseableIterable<CombinedScanTask> tasksIterable = scan.planTasks()) {
-      tasksIterable.forEach(task -> {
+    try (CloseableIterable<FileScanTask> taskIterable = scan.planFiles()) {
+      final List<FileScanTask> tasks = Lists.newArrayList(taskIterable);
+      List<ScanTaskGroup<FileScanTask>> partitionScanTaskGroups =
+          TableScanUtil.planTaskGroups(
+              tasks,
+              scan.targetSplitSize(),
+              scan.splitLookback(),
+              scan.splitOpenFileCost(),
+              Partitioning.partitionType(table));
+      partitionScanTaskGroups.forEach(task -> {
         if (applyResidual && (model == InputFormatConfig.InMemoryDataModel.HIVE ||
             model == InputFormatConfig.InMemoryDataModel.PIG)) {
           // TODO: We do not support residual evaluation for HIVE and PIG in memory data model yet
@@ -241,8 +251,8 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
     return splits;
   }
 
-  private static void checkResiduals(CombinedScanTask task) {
-    task.files().forEach(fileScanTask -> {
+  private static void checkResiduals(ScanTaskGroup<FileScanTask> task) {
+    task.tasks().forEach(fileScanTask -> {
       Expression residual = fileScanTask.residual();
       if (residual != null && !residual.equals(Expressions.alwaysTrue())) {
         throw new UnsupportedOperationException(
@@ -296,13 +306,13 @@ public class IcebergInputFormat<T> extends InputFormat<Void, T> {
     @Override
     public void initialize(InputSplit split, TaskAttemptContext newContext) {
       // For now IcebergInputFormat does its own split planning and does not accept FileSplit instances
-      CombinedScanTask task = ((IcebergSplit) split).task();
+      ScanTaskGroup<FileScanTask> task = ((IcebergSplit) split).task();
       this.context = newContext;
       this.conf = newContext.getConfiguration();
       this.table = SerializationUtil.deserializeFromBase64(
                 conf.get(InputFormatConfig.SERIALIZED_TABLE_PREFIX + conf.get(InputFormatConfig.TABLE_IDENTIFIER)));
       HiveIcebergStorageHandler.checkAndSetIoConfig(conf, table);
-      this.tasks = task.files().iterator();
+      this.tasks = task.tasks().iterator();
       this.nameMapping = table.properties().get(TableProperties.DEFAULT_NAME_MAPPING);
       this.caseSensitive = conf.getBoolean(InputFormatConfig.CASE_SENSITIVE, InputFormatConfig.CASE_SENSITIVE_DEFAULT);
       this.expectedSchema = readSchema(conf, table, caseSensitive);

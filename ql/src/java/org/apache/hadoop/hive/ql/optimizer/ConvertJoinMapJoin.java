@@ -56,6 +56,7 @@ import org.apache.hadoop.hive.ql.parse.GenTezUtils;
 import org.apache.hadoop.hive.ql.parse.OptimizeTezProcContext;
 import org.apache.hadoop.hive.ql.parse.ParseContext;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ColStatistics;
 import org.apache.hadoop.hive.ql.plan.CommonMergeJoinDesc;
 import org.apache.hadoop.hive.ql.plan.DummyStoreDesc;
@@ -209,7 +210,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     // map join operator by default has no bucket cols and num of reduce sinks
     // reduced by 1
     mapJoinOp.setOpTraits(new OpTraits(null, -1, null,
-        joinOp.getOpTraits().getNumReduceSinks()));
+        null, joinOp.getOpTraits().getNumReduceSinks()));
     preserveOperatorInfos(mapJoinOp, joinOp, context);
     // propagate this change till the next RS
     for (Operator<? extends OperatorDesc> childOp : mapJoinOp.getChildOperators()) {
@@ -543,7 +544,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     context.parseContext.getContext().getPlanMapper().link(joinOp, mergeJoinOp);
     int numReduceSinks = joinOp.getOpTraits().getNumReduceSinks();
     OpTraits opTraits = new OpTraits(joinOp.getOpTraits().getBucketColNames(), numBuckets,
-        joinOp.getOpTraits().getSortCols(), numReduceSinks);
+        joinOp.getOpTraits().getSortCols(), joinOp.getOpTraits().getBucketFunctions(), numReduceSinks);
     mergeJoinOp.setOpTraits(opTraits);
     mergeJoinOp.getConf().setBucketingVersion(joinOp.getConf().getBucketingVersion());
     preserveOperatorInfos(mergeJoinOp, joinOp, context);
@@ -623,7 +624,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
       return;
     }
     currentOp.setOpTraits(new OpTraits(opTraits.getBucketColNames(),
-        opTraits.getNumBuckets(), opTraits.getSortCols(), opTraits.getNumReduceSinks()));
+        opTraits.getNumBuckets(), opTraits.getSortCols(), opTraits.getBucketFunctions(), opTraits.getNumReduceSinks()));
     for (Operator<? extends OperatorDesc> childOp : currentOp.getChildOperators()) {
       if ((childOp instanceof ReduceSinkOperator) || (childOp instanceof GroupByOperator)) {
         break;
@@ -650,6 +651,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     ReduceSinkOperator bigTableRS = (ReduceSinkOperator)joinOp.getParentOperators().get(bigTablePosition);
     OpTraits opTraits = bigTableRS.getOpTraits();
     List<List<String>> listBucketCols = opTraits.getBucketColNames();
+    List<BucketFunction> bigTableBucketFunctions = opTraits.getBucketFunctions();
     List<ExprNodeDesc> bigTablePartitionCols = bigTableRS.getConf().getPartitionCols();
     boolean updatePartitionCols = false;
     List<Integer> positions = new ArrayList<>();
@@ -681,8 +683,10 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
     joinDesc.setBucketMapJoin(true);
 
     // we can set the traits for this join operator
+    // TODO
     opTraits = new OpTraits(joinOp.getOpTraits().getBucketColNames(),
-        tezBucketJoinProcCtx.getNumBuckets(), null, joinOp.getOpTraits().getNumReduceSinks());
+        tezBucketJoinProcCtx.getNumBuckets(), null, bigTableBucketFunctions,
+        joinOp.getOpTraits().getNumReduceSinks());
     mapJoinOp.setOpTraits(opTraits);
     preserveOperatorInfos(mapJoinOp, joinOp, context);
     setNumberOfBucketsOnChildren(mapJoinOp);
@@ -708,6 +712,16 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
           newPartitionCols.add(partitionCols.get(position));
         }
         rsOp.getConf().setPartitionCols(newPartitionCols);
+      }
+    }
+    for (Operator<?> op : mapJoinOp.getParentOperators()) {
+      if (!(op instanceof ReduceSinkOperator)) {
+        continue;
+      }
+
+      ReduceSinkOperator rsOp = (ReduceSinkOperator) op;
+      if (!bigTableBucketFunctions.isEmpty()) {
+        rsOp.getConf().setPartitionFunction(bigTableBucketFunctions.get(0));
       }
     }
 
@@ -1552,6 +1566,7 @@ public class ConvertJoinMapJoin implements SemanticNodeProcessor {
             joinOp.getOpTraits().getBucketColNames(),
             numReducers,
             null,
+            joinOp.getOpTraits().getBucketFunctions(),
             joinOp.getOpTraits().getNumReduceSinks());
         mapJoinOp.setOpTraits(opTraits);
         preserveOperatorInfos(mapJoinOp, joinOp, context);

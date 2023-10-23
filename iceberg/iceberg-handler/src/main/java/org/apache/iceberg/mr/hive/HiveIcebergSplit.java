@@ -24,8 +24,10 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.OptionalInt;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.tez.HashableInputSplit;
+import org.apache.hadoop.hive.ql.io.BucketSplit;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.mr.mapreduce.IcebergSplit;
@@ -34,7 +36,7 @@ import org.apache.iceberg.relocated.com.google.common.primitives.Longs;
 import org.apache.iceberg.util.SerializationUtil;
 
 // Hive requires file formats to return splits that are instances of `FileSplit`.
-public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer, HashableInputSplit {
+public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer, HashableInputSplit, BucketSplit {
 
   private IcebergSplit innerSplit;
 
@@ -75,7 +77,7 @@ public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer
 
   @Override
   public byte[] getBytesForHash() {
-    Collection<FileScanTask> fileScanTasks = innerSplit.task().files();
+    Collection<FileScanTask> fileScanTasks = innerSplit.task().tasks();
 
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       for (FileScanTask task : fileScanTasks) {
@@ -86,6 +88,13 @@ public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer
     } catch (IOException ioe) {
       throw new RuntimeException("Couldn't produce hash input bytes for HiveIcebergSplit: " + this, ioe);
     }
+  }
+
+  @Override
+  public OptionalInt getBucketId() {
+    // TODO: Extract correctly
+    final Integer bucketId = innerSplit.task().groupingKey().get(0, Integer.class);
+    return bucketId == null ? OptionalInt.empty() : OptionalInt.of(bucketId);
   }
 
   @Override

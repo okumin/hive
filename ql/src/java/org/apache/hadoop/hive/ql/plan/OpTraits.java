@@ -24,14 +24,16 @@ public class OpTraits {
 
   private List<List<String>> bucketColNames;
   private List<List<String>> sortColNames;
+  private List<BucketFunction> bucketFunctions;
   private int numBuckets;
   private int numReduceSinks;
 
   public OpTraits(List<List<String>> bucketColNames, int numBuckets,
-      List<List<String>> sortColNames, int numReduceSinks) {
+      List<List<String>> sortColNames, List<BucketFunction> bucketFunctions, int numReduceSinks) {
     this.bucketColNames = bucketColNames;
     this.numBuckets = numBuckets;
     this.sortColNames = sortColNames;
+    this.bucketFunctions = bucketFunctions;
     this.numReduceSinks = numReduceSinks;
   }
 
@@ -59,6 +61,13 @@ public class OpTraits {
     return sortColNames;
   }
 
+  public List<BucketFunction> getBucketFunctions() {
+    return bucketFunctions;
+  }
+
+  public void setBucketFunctions(List<BucketFunction> bucketFunctions) {
+    this.bucketFunctions = bucketFunctions;
+  }
 
   public void setNumReduceSinks(int numReduceSinks) {
     this.numReduceSinks = numReduceSinks;

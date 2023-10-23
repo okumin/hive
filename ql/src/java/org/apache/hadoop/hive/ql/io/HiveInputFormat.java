@@ -19,6 +19,7 @@
 package org.apache.hadoop.hive.ql.io;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.util.OptionalInt;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -169,6 +170,15 @@ public class HiveInputFormat<K extends WritableComparable, V extends Writable>
 
     public String inputFormatClassName() {
       return inputFormatClassName;
+    }
+
+    public OptionalInt getBucketId() {
+      if (inputSplit instanceof BucketSplit) {
+        return ((BucketSplit) inputSplit).getBucketId();
+      }
+
+      final int bucketId = Utilities.parseSplitBucket(inputSplit);
+      return bucketId == -1 ? OptionalInt.empty() : OptionalInt.of(bucketId);
     }
 
     @Override

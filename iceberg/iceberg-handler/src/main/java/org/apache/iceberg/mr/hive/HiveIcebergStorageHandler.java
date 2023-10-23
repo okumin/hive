@@ -94,6 +94,7 @@ import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.parse.StorageFormat;
 import org.apache.hadoop.hive.ql.parse.StorageFormat.StorageHandlerTypes;
 import org.apache.hadoop.hive.ql.parse.TransformSpec;
+import org.apache.hadoop.hive.ql.plan.DynamicBucketCtx;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeConstantDesc;
@@ -708,6 +709,35 @@ public class HiveIcebergStorageHandler implements HiveStoragePredicateHandler, H
     }
 
     return dpCtx;
+  }
+
+  @Override
+  public boolean isBucketed(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    final List<TransformSpec> specs = getPartitionTransformSpec(hmsTable);
+    if (specs.size() != 1) {
+      // not support yet
+      return false;
+    }
+    final TransformSpec spec = specs.get(0);
+    if (spec.getTransformType() != TransformSpec.TransformType.BUCKET) {
+      // not support yet
+      return false;
+    }
+    if (!spec.getTransformParam().isPresent()) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public DynamicBucketCtx createDynamicBucketContext(org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    final List<TransformSpec> specs = getPartitionTransformSpec(hmsTable);
+    final TransformSpec spec = specs.get(0);
+    final List<String> bucketCols = Collections.singletonList(spec.getColumnName());
+    // TODO
+    final List<String> sortCols = Collections.emptyList();
+    final int numBuckets = spec.getTransformParam().get();
+    return new DynamicBucketCtx(bucketCols, sortCols, numBuckets, IcebergBucketFunction.get());
   }
 
   private void addCustomSortExpr(Table table,  org.apache.hadoop.hive.ql.metadata.Table hmsTable,

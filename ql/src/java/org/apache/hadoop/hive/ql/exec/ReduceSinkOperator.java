@@ -35,6 +35,7 @@ import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.io.BucketCodec;
 import org.apache.hadoop.hive.ql.io.HiveKey;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.plan.BucketFunction;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
 import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
@@ -235,9 +236,17 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
       // incase of ACID updates/deletes.
       boolean acidOp = conf.getWriteType() == AcidUtils.Operation.UPDATE ||
           conf.getWriteType() == AcidUtils.Operation.DELETE;
-      hashFunc = getConf().getBucketingVersion() == 2 && !acidOp ?
-          ObjectInspectorUtils::getBucketHashCode :
-          ObjectInspectorUtils::getBucketHashCodeOld;
+      final BucketFunction partitionFunction = getConf().getPartitionFunction();
+      if (partitionFunction != null) {
+        LOG.info("Use {} for partitioning", partitionFunction);
+        hashFunc = partitionFunction::getHashCode;
+      } else if (getConf().getBucketingVersion() == 2 && !acidOp) {
+        LOG.info("Use v2 hash for partitioning");
+        hashFunc = ObjectInspectorUtils::getBucketHashCode;
+      } else {
+        LOG.info("Use v1 hash for partitioning");
+        hashFunc = ObjectInspectorUtils::getBucketHashCodeOld;
+      }
     } catch (Exception e) {
       String msg = "Error initializing ReduceSinkOperator: " + e.getMessage();
       LOG.error(msg, e);

@@ -97,10 +97,12 @@ public class OpTraitsRulesProcFactory {
       List<List<String>> listBucketCols = new ArrayList<List<String>>();
       int numBuckets = -1;
       int numReduceSinks = 1;
+      List<BucketFunction> bucketFunctions = new ArrayList<>();
       OpTraits parentOpTraits = rs.getParentOperators().get(0).getOpTraits();
       if (parentOpTraits != null) {
         numBuckets = parentOpTraits.getNumBuckets();
         numReduceSinks += parentOpTraits.getNumReduceSinks();
+        bucketFunctions = parentOpTraits.getBucketFunctions();
       }
 
       List<String> bucketCols = new ArrayList<>();
@@ -160,7 +162,7 @@ public class OpTraitsRulesProcFactory {
 
       listBucketCols.add(bucketCols);
       OpTraits opTraits = new OpTraits(listBucketCols, numBuckets,
-          listBucketCols, numReduceSinks);
+          listBucketCols, bucketFunctions, numReduceSinks);
       rs.setOpTraits(opTraits);
       return null;
     }
@@ -224,23 +226,36 @@ public class OpTraitsRulesProcFactory {
       } catch (HiveException e) {
         prunedPartList = null;
       }
-      boolean isBucketed = checkBucketedTable(table,
-          opTraitsCtx.getParseContext(), prunedPartList);
-      List<List<String>> bucketColsList = new ArrayList<List<String>>();
-      List<List<String>> sortedColsList = new ArrayList<List<String>>();
+
+      final List<List<String>> bucketColsList = new ArrayList<List<String>>();
+      final List<List<String>> sortedColsList = new ArrayList<List<String>>();
       int numBuckets = -1;
-      if (isBucketed) {
-        bucketColsList.add(table.getBucketCols());
-        numBuckets = table.getNumBuckets();
-        List<String> sortCols = new ArrayList<String>();
-        for (Order colSortOrder : table.getSortCols()) {
-          sortCols.add(colSortOrder.getCol());
+      final BucketFunction bucketFunction;
+      if (table.getStorageHandler() != null && table.getStorageHandler().isBucketed(table)) {
+        final DynamicBucketCtx ctx = table.getStorageHandler().createDynamicBucketContext(table);
+        bucketColsList.add(ctx.getBucketCols());
+        sortedColsList.add(ctx.getSortCols());
+        numBuckets = ctx.getNumBuckets();
+        bucketFunction = ctx.getBucketFunction();
+      } else {
+        boolean isBucketed = checkBucketedTable(table,
+            opTraitsCtx.getParseContext(), prunedPartList);
+        if (isBucketed) {
+          bucketColsList.add(table.getBucketCols());
+          numBuckets = table.getNumBuckets();
+          List<String> sortCols = new ArrayList<>();
+          for (Order colSortOrder : table.getSortCols()) {
+            sortCols.add(colSortOrder.getCol());
+          }
+          sortedColsList.add(sortCols);
         }
-        sortedColsList.add(sortCols);
+        bucketFunction = null;
       }
+      List<BucketFunction> bucketFunctions = bucketFunction == null
+          ? Collections.emptyList() : Collections.singletonList(bucketFunction);
       // num reduce sinks hardcoded to 0 because TS has no parents
       OpTraits opTraits = new OpTraits(bucketColsList, numBuckets,
-          sortedColsList, 0);
+          sortedColsList, bucketFunctions, 0);
       ts.setOpTraits(opTraits);
       return null;
     }
@@ -265,13 +280,15 @@ public class OpTraitsRulesProcFactory {
       }
 
       List<List<String>> listBucketCols = new ArrayList<>();
+      List<BucketFunction> bucketFunctions = new ArrayList<>();
       int numReduceSinks = 0;
       OpTraits parentOpTraits = gbyOp.getParentOperators().get(0).getOpTraits();
       if (parentOpTraits != null) {
+        bucketFunctions = parentOpTraits.getBucketFunctions();
         numReduceSinks = parentOpTraits.getNumReduceSinks();
       }
       listBucketCols.add(gbyKeys);
-      OpTraits opTraits = new OpTraits(listBucketCols, -1, listBucketCols,
+      OpTraits opTraits = new OpTraits(listBucketCols, -1, listBucketCols, bucketFunctions,
           numReduceSinks);
       gbyOp.setOpTraits(opTraits);
       return null;
@@ -307,14 +324,16 @@ public class OpTraitsRulesProcFactory {
       }
 
       List<List<String>> listBucketCols = new ArrayList<>();
+      List<BucketFunction> bucketFunctions = new ArrayList<>();
       int numReduceSinks = 0;
       OpTraits parentOptraits = ptfOp.getParentOperators().get(0).getOpTraits();
       if (parentOptraits != null) {
+        bucketFunctions = parentOptraits.getBucketFunctions();
         numReduceSinks = parentOptraits.getNumReduceSinks();
       }
 
       listBucketCols.add(partitionKeys);
-      OpTraits opTraits = new OpTraits(listBucketCols, -1, listBucketCols,
+      OpTraits opTraits = new OpTraits(listBucketCols, -1, listBucketCols, bucketFunctions,
           numReduceSinks);
       ptfOp.setOpTraits(opTraits);
       return null;
@@ -384,6 +403,7 @@ public class OpTraitsRulesProcFactory {
       }
 
       int numBuckets = -1;
+      List<BucketFunction> bucketFunctions = null;
       int numReduceSinks = 0;
       OpTraits parentOpTraits = selOp.getParentOperators().get(0).getOpTraits();
       if (parentOpTraits != null) {
@@ -392,9 +412,10 @@ public class OpTraitsRulesProcFactory {
             !(listBucketCols.isEmpty() || listBucketCols.get(0).isEmpty())) {
           numBuckets = parentOpTraits.getNumBuckets();
         }
+        bucketFunctions = parentOpTraits.getBucketFunctions();
         numReduceSinks = parentOpTraits.getNumReduceSinks();
       }
-      OpTraits opTraits = new OpTraits(listBucketCols, numBuckets, listSortCols,
+      OpTraits opTraits = new OpTraits(listBucketCols, numBuckets, listSortCols, bucketFunctions,
           numReduceSinks);
       selOp.setOpTraits(opTraits);
       return null;
@@ -409,6 +430,7 @@ public class OpTraitsRulesProcFactory {
       JoinOperator joinOp = (JoinOperator) nd;
       List<List<String>> bucketColsList = new ArrayList<List<String>>();
       List<List<String>> sortColsList = new ArrayList<List<String>>();
+      List<BucketFunction> bucketFunctions = new ArrayList<>();
       byte pos = 0;
       int numReduceSinks = 0; // will be set to the larger of the parents
       for (Operator<? extends OperatorDesc> parentOp : joinOp.getParentOperators()) {
@@ -424,6 +446,10 @@ public class OpTraitsRulesProcFactory {
         OpTraits parentOpTraits = rsOp.getOpTraits();
         bucketColsList.add(getOutputColNames(joinOp, parentOpTraits.getBucketColNames(), pos));
         sortColsList.add(getOutputColNames(joinOp, parentOpTraits.getSortCols(), pos));
+        // TODO: correct?
+        if (!parentOpTraits.getBucketFunctions().isEmpty()) {
+          bucketFunctions.add(parentOpTraits.getBucketFunctions().get(0));
+        }
         if (parentOpTraits.getNumReduceSinks() > numReduceSinks) {
           numReduceSinks = parentOpTraits.getNumReduceSinks();
         }
@@ -433,7 +459,8 @@ public class OpTraitsRulesProcFactory {
       // The bucketingVersion is not relevant here as it is never used.
       // For SMB, we look at the parent tables' bucketing versions and for
       // bucket map join the big table's bucketing version is considered.
-      joinOp.setOpTraits(new OpTraits(bucketColsList, -1, bucketColsList, numReduceSinks));
+      // TODO
+      joinOp.setOpTraits(new OpTraits(bucketColsList, -1, bucketColsList, bucketFunctions, numReduceSinks));
       return null;
     }
 
@@ -496,7 +523,7 @@ public class OpTraitsRulesProcFactory {
         }
       }
       OpTraits opTraits = new OpTraits(null, -1,
-          null, numReduceSinks);
+          null, null, numReduceSinks);
       operator.setOpTraits(opTraits);
       return null;
     }

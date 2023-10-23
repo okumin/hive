@@ -87,6 +87,7 @@ public class ReduceSinkDesc extends AbstractOperatorDesc {
    * Partition columns are not passed to reducer.
    */
   private List<ExprNodeDesc> partitionCols;
+  private BucketFunction partitionFunction;
 
   private int numReducers;
 
@@ -291,6 +292,14 @@ public class ReduceSinkDesc extends AbstractOperatorDesc {
       return true;
     }
     return false;
+  }
+
+  public BucketFunction getPartitionFunction() {
+    return partitionFunction;
+  }
+
+  public void setPartitionFunction(BucketFunction partitionFunction) {
+    this.partitionFunction = partitionFunction;
   }
 
   @Signature

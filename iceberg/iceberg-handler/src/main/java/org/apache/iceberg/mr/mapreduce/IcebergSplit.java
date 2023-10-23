@@ -24,10 +24,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.iceberg.CombinedScanTask;
 import org.apache.iceberg.FileScanTask;
-import org.apache.iceberg.hadoop.Util;
-import org.apache.iceberg.mr.InputFormatConfig;
+import org.apache.iceberg.ScanTaskGroup;
 import org.apache.iceberg.util.SerializationUtil;
 
 // Since this class extends `mapreduce.InputSplit and implements `mapred.InputSplit`, it can be returned by both MR v1
@@ -36,7 +34,7 @@ public class IcebergSplit extends InputSplit implements org.apache.hadoop.mapred
 
   public static final String[] ANYWHERE = new String[]{"*"};
 
-  private CombinedScanTask task;
+  private ScanTaskGroup<FileScanTask> task;
 
   private transient String[] locations;
   private transient Configuration conf;
@@ -45,12 +43,12 @@ public class IcebergSplit extends InputSplit implements org.apache.hadoop.mapred
   public IcebergSplit() {
   }
 
-  IcebergSplit(Configuration conf, CombinedScanTask task) {
+  IcebergSplit(Configuration conf, ScanTaskGroup<FileScanTask> task) {
     this.task = task;
     this.conf = conf;
   }
 
-  public CombinedScanTask task() {
+  public ScanTaskGroup<FileScanTask> task() {
     return task;
   }
 
@@ -61,21 +59,22 @@ public class IcebergSplit extends InputSplit implements org.apache.hadoop.mapred
 
   @Override
   public long getLength() {
-    return task.files().stream().mapToLong(FileScanTask::length).sum();
+    return task.tasks().stream().mapToLong(FileScanTask::length).sum();
   }
 
   @Override
   public String[] getLocations() {
     // The implementation of getLocations() is only meant to be used during split computation
     // getLocations() won't be accurate when called on worker nodes and will always return "*"
-    if (locations == null && conf != null) {
-      boolean localityPreferred = conf.getBoolean(InputFormatConfig.LOCALITY, false);
-      locations = localityPreferred ? Util.blockLocations(task, conf) : ANYWHERE;
-    } else {
-      locations = ANYWHERE;
-    }
+    // TODO
+    // if (locations == null && conf != null) {
+    //   boolean localityPreferred = conf.getBoolean(InputFormatConfig.LOCALITY, false);
+    //   locations = localityPreferred ? Util.blockLocations(task, conf) : ANYWHERE;
+    // } else {
+    //   locations = ANYWHERE;
+    // }
 
-    return locations;
+    return ANYWHERE;
   }
 
   @Override

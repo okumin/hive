@@ -3271,15 +3271,13 @@ public class StatsRulesProcFactory {
       return stats;
     }
 
-    PlanMapper pm = context.getPlanMapper();
-    OpTreeSignature treeSig = pm.getSignatureOf(op);
-    pm.link(op, treeSig);
-
     StatsSource statsSource = context.getStatsSource();
     if (!statsSource.canProvideStatsFor(op.getClass())) {
       return stats;
     }
 
+    PlanMapper pm = context.getPlanMapper();
+    OpTreeSignature treeSig = pm.getSignatureOf(op);
     Optional<OperatorStats> os = statsSource.lookup(treeSig);
 
     if (!os.isPresent()) {

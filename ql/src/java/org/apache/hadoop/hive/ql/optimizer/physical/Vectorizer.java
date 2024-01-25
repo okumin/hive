@@ -842,6 +842,9 @@ public class Vectorizer implements PhysicalPlanResolver {
     List<Operator<? extends OperatorDesc>> currentVectorParentList = newOperatorList();
     currentVectorParentList.add(dummyVectorOperator);
 
+    Set<ImmutablePair<Operator<? extends OperatorDesc>, Operator<? extends OperatorDesc>>> vectorizedPairs =
+        new HashSet<>();
+
     delayedFixups.clear();
 
     do {
@@ -866,7 +869,7 @@ public class Vectorizer implements PhysicalPlanResolver {
          */
         doProcessChildren(
             parent, vectorParent, nextParentList, nextVectorParentList,
-            isReduce, isTez, vectorTaskColumnInfo);
+            isReduce, isTez, vectorTaskColumnInfo, vectorizedPairs);
 
       }
       currentParentList = nextParentList;
@@ -874,6 +877,8 @@ public class Vectorizer implements PhysicalPlanResolver {
     } while (currentParentList.size() > 0);
 
     runDelayedFixups();
+    // Pairs must be linked after fix-ups. Otherwise, planMapper may generate incomplete OpTreeSignatures
+    vectorizedPairs.forEach(pair -> planMapper.link(pair.getLeft(), pair.getRight()));
 
     return dummyVectorOperator;
   }
@@ -884,7 +889,8 @@ public class Vectorizer implements PhysicalPlanResolver {
       List<Operator<? extends OperatorDesc>> nextParentList,
       List<Operator<? extends OperatorDesc>> nextVectorParentList,
       boolean isReduce, boolean isTez,
-      VectorTaskColumnInfo vectorTaskColumnInfo)
+      VectorTaskColumnInfo vectorTaskColumnInfo,
+      Set<ImmutablePair<Operator<? extends OperatorDesc>, Operator<? extends OperatorDesc>>> vectorizedPairs)
           throws VectorizerCannotVectorizeException {
 
     List<Operator<? extends OperatorDesc>> children = parent.getChildOperators();
@@ -905,6 +911,7 @@ public class Vectorizer implements PhysicalPlanResolver {
 
       nextParentList.add(child);
       nextVectorParentList.add(vectorChild);
+      vectorizedPairs.add(ImmutablePair.of(child, vectorChild));
     }
   }
 
@@ -3305,22 +3312,6 @@ public class Vectorizer implements PhysicalPlanResolver {
     return (result ? null : "Vectorizing data type " + type + " not supported");
   }
 
-  private void fixupParentChildOperators(Operator<? extends OperatorDesc> op,
-          Operator<? extends OperatorDesc> vectorOp) {
-    if (op.getParentOperators() != null) {
-      vectorOp.setParentOperators(op.getParentOperators());
-      for (Operator<? extends OperatorDesc> p : op.getParentOperators()) {
-        p.replaceChild(op, vectorOp);
-      }
-    }
-    if (op.getChildOperators() != null) {
-      vectorOp.setChildOperators(op.getChildOperators());
-      for (Operator<? extends OperatorDesc> c : op.getChildOperators()) {
-        c.replaceParent(op, vectorOp);
-      }
-    }
-  }
-
   private boolean isBigTableOnlyResults(MapJoinDesc desc) {
     Byte[] order = desc.getTagOrder();
     byte posBigTable = (byte) desc.getPosBigTable();
@@ -5256,18 +5247,6 @@ public class Vectorizer implements PhysicalPlanResolver {
         vContext, vectorPTFDesc);
   }
 
-  // UNDONE: Used by tests...
-  public Operator<? extends OperatorDesc> vectorizeOperator(Operator<? extends OperatorDesc> op,
-      VectorizationContext vContext, boolean isReduce, boolean isTez, VectorTaskColumnInfo vectorTaskColumnInfo)
-          throws HiveException, VectorizerCannotVectorizeException {
-    Operator<? extends OperatorDesc> vectorOp =
-        validateAndVectorizeOperator(op, vContext, isReduce, isTez, vectorTaskColumnInfo);
-    if (vectorOp != op) {
-      fixupParentChildOperators(op, vectorOp);
-    }
-    return vectorOp;
-  }
-
   public Operator<? extends OperatorDesc> validateAndVectorizeOperator(Operator<? extends OperatorDesc> op,
       VectorizationContext vContext, boolean isReduce, boolean isTez,
       VectorTaskColumnInfo vectorTaskColumnInfo)
@@ -5557,8 +5536,6 @@ public class Vectorizer implements PhysicalPlanResolver {
 
     LOG.debug("vectorizeOperator " + vectorOp.getClass().getName());
     LOG.debug("vectorizeOperator " + vectorOp.getConf().getClass().getName());
-    // These operators need to be linked to enable runtime statistics to be gathered/used correctly
-    planMapper.link(op, vectorOp);
 
     return vectorOp;
   }

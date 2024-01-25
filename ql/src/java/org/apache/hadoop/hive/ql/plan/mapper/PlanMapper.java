@@ -32,21 +32,32 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
+import org.apache.calcite.rel.RelNode;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.optimizer.signature.OpTreeSignature;
 import org.apache.hadoop.hive.ql.optimizer.signature.OpTreeSignatureFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
+import org.apache.hadoop.hive.ql.optimizer.signature.RelTreeSignature;
 
 /**
  * Enables to connect related objects to eachother.
  *
  * Most importantly it aids to connect Operators to OperatorStats and probably RelNodes.
+ * - ASTNodes
+ * - Operator instances
+ * - Operator tree signatures
+ * - RelNode instances
+ * - RelNode signatures
  */
 public class PlanMapper {
 
-  Set<EquivGroup> groups = new HashSet<>();
-  private Map<Object, EquivGroup> objectMap = new CompositeMap<>(OpTreeSignature.class, AuxOpTreeSignature.class);
+  private final Set<EquivGroup> groups = new HashSet<>();
+  private final Map<Object, EquivGroup> objectMap = new CompositeMap<>(
+      OpTreeSignature.class,
+      AuxOpTreeSignature.class,
+      RelTreeSignature.class
+  );
 
   /**
    * Specialized class which can compare by identity or value; based on the key type.
@@ -220,8 +231,7 @@ public class PlanMapper {
         throw new RuntimeException("equivalence mapping violation");
       }
       EquivGroup newGrp = new EquivGroup();
-      newGrp.add(o1);
-      newGrp.add(o2);
+      keySet.forEach(newGrp::add);
       for (EquivGroup g : mGroups) {
         for (Object o : g.members) {
           newGrp.add(o);
@@ -232,8 +242,7 @@ public class PlanMapper {
     } else {
       EquivGroup targetGroup = mGroups.isEmpty() ? new EquivGroup() : mGroups.iterator().next();
       groups.add(targetGroup);
-      targetGroup.add(o1);
-      targetGroup.add(o2);
+      keySet.forEach(targetGroup::add);
     }
 
   }
@@ -243,7 +252,11 @@ public class PlanMapper {
   private Object getKeyFor(Object o) {
     if (o instanceof Operator) {
       Operator<?> operator = (Operator<?>) o;
-      return signatureCache.getSignature(operator);
+      return getSignatureOf(operator);
+    }
+    if (o instanceof RelNode) {
+      RelNode node = (RelNode) o;
+      return RelTreeSignature.of(node);
     }
     return o;
   }

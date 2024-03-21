@@ -1624,4 +1624,66 @@ public abstract class AbstractThriftHiveMetastore implements Iface {
         throws MetaException, org.apache.thrift.TException {
         throw new UnsupportedOperationException("this method is not supported");
     }
+
+    @Override
+    public WriteNotificationLogBatchResponse add_write_notification_log_in_batch(WriteNotificationLogBatchRequest rqst)
+        throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public void remove_compaction_metrics_data(CompactionMetricsDataRequest request) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public boolean update_compaction_metrics_data(CompactionMetricsDataStruct data) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public void mark_refused(CompactionInfoStruct cr) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public boolean submit_for_cleanup(CompactionRequest o1, long o2, long o3) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public void add_write_ids_to_min_history(long txnId, java.util.Map<java.lang.String,java.lang.Long> writeIds)
+        throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public void update_transaction_statistics(UpdateTransactionalStatsRequest req) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public boolean set_properties(PropertySetRequest req) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public PropertyGetResponse get_properties(PropertyGetRequest req) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public Table translate_table_dryrun(CreateTableRequest request) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public void drop_database_req(DropDatabaseRequest req) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public AbortCompactResponse abort_Compactions(AbortCompactionRequest rqst) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
 }

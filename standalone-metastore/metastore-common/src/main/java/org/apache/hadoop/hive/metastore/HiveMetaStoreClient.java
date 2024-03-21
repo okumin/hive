@@ -137,7 +137,7 @@ public class HiveMetaStoreClient implements IMetaStoreClient, AutoCloseable {
 
   // Name of the HiveMetaStore class. It is used to initialize embedded metastore
   private static final String HIVE_METASTORE_CLASS =
-      "org.apache.hadoop.hive.metastore.HiveMetaStore";
+      "org.apache.hadoop.hive.metastore.MemoryHiveMetaStore";
 
   // Method used to create Hive Metastore client. It is called as
   // HiveMetaStore.newHMSHandler("hive client", this.conf, true);
@@ -211,7 +211,8 @@ public class HiveMetaStoreClient implements IMetaStoreClient, AutoCloseable {
       setProcessorIdentifier("HMSClient-" + "@" + hostName);
     }
 
-    String msUri = MetastoreConf.getVar(conf, ConfVars.THRIFT_URIS);
+    //String msUri = MetastoreConf.getVar(conf, ConfVars.THRIFT_URIS);
+    String msUri = "";
     localMetaStore = MetastoreConf.isEmbeddedMetaStore(msUri);
     if (localMetaStore) {
       if (!allowEmbedded) {

@@ -558,6 +558,7 @@ public class HMSHandler extends FacebookBase implements IHMSHandler {
 
   static RawStore newRawStoreForConf(Configuration conf) throws MetaException {
     Configuration newConf = new Configuration(conf);
+    MetastoreConf.setVar(newConf, ConfVars.RAW_STORE_IMPL, "org.apache.hadoop.hive.metastore.MemoryRawStore");
     String rawStoreClassName = MetastoreConf.getVar(newConf, ConfVars.RAW_STORE_IMPL);
     LOG.info("Opening raw store with implementation class: {}", rawStoreClassName);
     return RawStoreProxy.getProxy(newConf, conf, rawStoreClassName);

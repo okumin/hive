@@ -211,6 +211,7 @@ public class HiveMetaStoreClient implements IMetaStoreClient, AutoCloseable {
       setProcessorIdentifier("HMSClient-" + "@" + hostName);
     }
 
+    MetastoreConf.setVar(conf, ConfVars.THRIFT_URIS, ""); // use embedded mode
     String msUri = MetastoreConf.getVar(conf, ConfVars.THRIFT_URIS);
     localMetaStore = MetastoreConf.isEmbeddedMetaStore(msUri);
     if (localMetaStore) {

@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Stack;
 
-import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.lib.DefaultGraphWalker;
 import org.apache.hadoop.hive.ql.lib.DefaultRuleDispatcher;
@@ -94,8 +93,6 @@ public final class AuxOpTreeSignature {
   }
 
   public static void linkAuxSignatures(ParseContext parseContext) throws SemanticException {
-    if (parseContext.getConf().getBoolVar(ConfVars.HIVE_QUERY_PLANMAPPER_LINK_RELNODES)) {
-      linkAuxSignatures(parseContext, new ArrayList(parseContext.getTopOps().values()));
-    }
+    linkAuxSignatures(parseContext, new ArrayList<>(parseContext.getTopOps().values()));
   }
 }

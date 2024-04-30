@@ -21,7 +21,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -72,11 +71,9 @@ import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.QueryProperties;
 import org.apache.hadoop.hive.ql.metadata.VirtualColumn;
 import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSemanticException;
-import org.apache.hadoop.hive.ql.optimizer.calcite.HiveCalciteUtil;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelOptUtil;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveGroupingID;
-import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortExchange;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveValues;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.jdbc.HiveJdbcConverter;
@@ -277,8 +274,10 @@ public class ASTConverter {
     if (where != null) {
       ASTNode cond = where.getCondition().accept(new RexVisitor(schema, false, root.getCluster().getRexBuilder()));
       hiveAST.where = ASTBuilder.where(cond);
-      planMapper.link(cond, where);
-      planMapper.link(cond, RelTreeSignature.of(where));
+      if (planMapper != null) {
+        planMapper.link(cond, where);
+        planMapper.link(cond, RelTreeSignature.of(where));
+      }
     }
 
     /*
@@ -531,7 +530,10 @@ public class ASTConverter {
       TableScan f = (TableScan) r;
       s = new Schema(f);
       ast = ASTBuilder.table(f);
-      planMapper.link(ast, f);
+      if (planMapper != null) {
+        // I guess we don't need this because this group is always orphaned
+        planMapper.link(ast, f);
+      }
     } else if (r instanceof HiveJdbcConverter) {
       HiveJdbcConverter f = (HiveJdbcConverter) r;
       s = new Schema(f);

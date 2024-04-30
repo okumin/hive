@@ -308,6 +308,7 @@ import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.HiveOperation;
 import org.apache.hadoop.hive.ql.plan.SelectDesc;
 import org.apache.hadoop.hive.ql.plan.mapper.EmptyStatsSource;
+import org.apache.hadoop.hive.ql.plan.mapper.PlanMapper;
 import org.apache.hadoop.hive.ql.plan.mapper.StatsSource;
 import org.apache.hadoop.hive.ql.reexec.ReCompileException;
 import org.apache.hadoop.hive.ql.session.SessionState;
@@ -1396,8 +1397,10 @@ public class CalcitePlanner extends SemanticAnalyzer {
    * @throws SemanticException
    */
   ASTNode getOptimizedAST(RelNode optimizedOptiqPlan) throws SemanticException {
+    PlanMapper planMapper = HiveConf.getBoolVar(conf, ConfVars.HIVE_QUERY_PLANMAPPER_LINK_RELNODES)
+        ? ctx.getPlanMapper() : null;
     ASTNode optiqOptimizedAST = ASTConverter.convert(optimizedOptiqPlan, resultSchema,
-            HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_COLUMN_ALIGNMENT),ctx.getPlanMapper());
+            HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_COLUMN_ALIGNMENT), planMapper);
     return optiqOptimizedAST;
   }
 

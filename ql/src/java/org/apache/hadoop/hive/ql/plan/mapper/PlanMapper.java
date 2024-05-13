@@ -32,11 +32,15 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.optimizer.signature.OpTreeSignature;
 import org.apache.hadoop.hive.ql.optimizer.signature.OpTreeSignatureFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Enables to connect related objects to eachother.
@@ -44,9 +48,16 @@ import com.google.common.collect.Sets;
  * Most importantly it aids to connect Operators to OperatorStats and probably RelNodes.
  */
 public class PlanMapper {
+  private static final Logger LOG = LoggerFactory.getLogger(PlanMapper.class);
 
-  Set<EquivGroup> groups = new HashSet<>();
-  private Map<Object, EquivGroup> objectMap = new CompositeMap<>(OpTreeSignature.class, AuxOpTreeSignature.class);
+  private final Set<EquivGroup> groups = new HashSet<>();
+  private final Map<Object, EquivGroup> objectMap = new CompositeMap<>(OpTreeSignature.class, AuxOpTreeSignature.class);
+  private final boolean failsOnBroken;
+  private boolean isBroken = false;
+
+  public PlanMapper(Configuration conf) {
+    failsOnBroken = HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_QUERY_PLANMAPPER_STRICT_VALIDATION);
+  }
 
   /**
    * Specialized class which can compare by identity or value; based on the key type.
@@ -217,7 +228,11 @@ public class PlanMapper {
     }
     if (mGroups.size() > 1) {
       if (!mayMerge) {
-        throw new RuntimeException("equivalence mapping violation");
+        LOG.error("Illegally linking {} and {}", o1, o2);
+        if (failsOnBroken) {
+          throw new RuntimeException("equivalence mapping violation");
+        }
+        isBroken = true;
       }
       EquivGroup newGrp = new EquivGroup();
       newGrp.add(o1);
@@ -248,6 +263,10 @@ public class PlanMapper {
     return o;
   }
 
+  public boolean isBroken() {
+    return isBroken;
+  }
+
   public <T> List<T> getAll(Class<T> clazz) {
     List<T> ret = new ArrayList<>();
     for (EquivGroup g : groups) {
@@ -256,13 +275,7 @@ public class PlanMapper {
     return ret;
   }
 
-  public void runMapper(GroupTransformer mapper) {
-    for (EquivGroup equivGroup : groups) {
-      mapper.map(equivGroup);
-    }
-  }
-
-  public <T> List<T> lookupAll(Class<T> clazz, Object key) {
+  private <T> List<T> lookupAll(Class<T> clazz, Object key) {
     EquivGroup group = objectMap.get(key);
     if (group == null) {
       throw new NoSuchElementException(Objects.toString(key));
@@ -270,6 +283,7 @@ public class PlanMapper {
     return group.getAll(clazz);
   }
 
+  @VisibleForTesting
   public <T> T lookup(Class<T> clazz, Object key) {
     List<T> all = lookupAll(clazz, key);
     if (all.size() != 1) {
@@ -279,7 +293,6 @@ public class PlanMapper {
     return all.get(0);
   }
 
-  @VisibleForTesting
   public Iterator<EquivGroup> iterateGroups() {
     return groups.iterator();
 

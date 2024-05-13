@@ -337,6 +337,11 @@
 </property>
 
 <property>
+  <name>hive.query.planmapper.strict.validation</name>
+  <value>true</value>
+</property>
+
+<property>
   <name>iceberg.hive.keep.stats</name>
   <value>true</value>
   <description>

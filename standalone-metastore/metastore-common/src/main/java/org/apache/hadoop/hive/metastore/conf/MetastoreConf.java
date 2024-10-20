@@ -1679,6 +1679,8 @@ public class MetastoreConf {
     METASTORE_THRIFT_HTTP_MAX_IDLE_TIME("metastore.thrift.http.max.idle.time", "hive.metastore.thrift.http.max.idle.time", 
         1800, TimeUnit.SECONDS,
         "Maximum idle time for a connection on the server when in HTTP mode."),
+    METASTORE_THRIFT_CUSTOM_ADAPTOR_CLASS("metastore.thrift.custom.adaptor.class", "metastore.thrift.custom.adaptor.class",
+        "", "TODO"),
     USE_SSL("metastore.use.SSL", "hive.metastore.use.SSL", false,
         "Set this to true for using SSL encryption in HMS server."),
     // We should somehow unify next two options.

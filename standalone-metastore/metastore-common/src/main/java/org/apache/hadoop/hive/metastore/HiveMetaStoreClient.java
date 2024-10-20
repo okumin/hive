@@ -213,6 +213,19 @@ public class HiveMetaStoreClient implements IMetaStoreClient, AutoCloseable {
       setProcessorIdentifier("HMSClient-" + "@" + hostName);
     }
 
+    final String thriftAdaptor = MetastoreConf.getVar(conf, ConfVars.METASTORE_THRIFT_CUSTOM_ADAPTOR_CLASS);
+    if (!thriftAdaptor.isEmpty()) {
+      try {
+        final Class<?> clazz = Class.forName(thriftAdaptor);
+        client = (ThriftHiveMetastore.Iface) clazz.getDeclaredConstructor(Configuration.class).newInstance(conf);
+        isConnected = true;
+        snapshotActiveConf();
+        return;
+      } catch (Exception e) {
+        throw new RuntimeException("TODO", e);
+      }
+    }
+
     String msUri = MetastoreConf.getVar(conf, ConfVars.THRIFT_URIS);
     localMetaStore = MetastoreConf.isEmbeddedMetaStore(msUri);
     if (localMetaStore) {

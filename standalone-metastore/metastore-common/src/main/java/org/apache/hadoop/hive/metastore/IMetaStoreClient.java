@@ -305,6 +305,7 @@ public interface IMetaStoreClient extends AutoCloseable {
    * @throws TException thrift transport error
    * @throws UnknownDBException No databases match the provided pattern.
    */
+  @Deprecated
   List<TableMeta> getTableMeta(String dbPatterns, String tablePatterns, List<String> tableTypes)
       throws MetaException, TException, UnknownDBException;
 
@@ -849,6 +850,7 @@ public interface IMetaStoreClient extends AutoCloseable {
    * @throws MetaException error accessing the RDBMS
    * @throws TException thrift transport error
    */
+  @Deprecated
   Partition appendPartition(String dbName, String tableName, List<String> partVals)
       throws InvalidObjectException, AlreadyExistsException, MetaException, TException;
 
@@ -880,6 +882,7 @@ public interface IMetaStoreClient extends AutoCloseable {
    * @throws MetaException error accessing the RDBMS
    * @throws TException thrift transport error
    */
+  @Deprecated
   Partition appendPartition(String dbName, String tableName, String name)
       throws InvalidObjectException, AlreadyExistsException, MetaException, TException;
 

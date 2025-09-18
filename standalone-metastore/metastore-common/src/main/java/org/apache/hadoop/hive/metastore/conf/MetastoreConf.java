@@ -983,8 +983,8 @@ public class MetastoreConf {
                 "  NOSASL:  Raw transport" +
                 "  JWT:  JSON Web Token authentication via JWT token. Only supported in Http/Https mode"),
     THRIFT_METASTORE_AUTHENTICATION_JWT_JWKS_URL("metastore.authentication.jwt.jwks.url",
-        "hive.metastore.authentication.jwt.jwks.url", "", "File URL from where URLBasedJWKSProvider "
-        + "in metastore server will try to load JWKS to match a JWT sent in HTTP request header. Used only when "
+        "hive.metastore.authentication.jwt.jwks.url", "", "File URL from where "
+        + "metastore server will try to load JWKS to match a JWT sent in HTTP request header. Used only when "
         + "Hive metastore server is running in JWT auth mode"),
     METASTORE_CUSTOM_AUTHENTICATION_CLASS("metastore.custom.authentication.class",
             "hive.metastore.custom.authentication.class",
@@ -1873,8 +1873,62 @@ public class MetastoreConf {
             " positive value will be used as-is."
     ),
     CATALOG_SERVLET_AUTH("metastore.catalog.servlet.auth",
-        "hive.metastore.catalog.servlet.auth", "jwt", new StringSetValidator("none", "simple", "jwt"),
-        "HMS Catalog servlet authentication method (none, simple, or jwt)."
+        "hive.metastore.catalog.servlet.auth", "jwt", new StringSetValidator("none", "simple", "jwt", "oauth2"),
+        "HMS Catalog servlet authentication method (none, simple, jwt, or oauth2)."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_FACTORY("metastore.catalog.servlet.auth.oauth2.factory",
+        "hive.metastore.catalog.servlet.auth.factory",
+        "org.apache.hadoop.hive.metastore.auth.oauth2.OAuth2AuthenticatorFactory",
+        "The factory class to provide a custom OAuth 2 integration. You may need to update it when your authorization " +
+        "server does not comply with the OAuth 2 standard, such as RFC 9068."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_ISSUER("metastore.catalog.servlet.auth.oauth2.issuer",
+        "hive.metastore.catalog.servlet.auth.oauth2.issuer", "",
+        "The issuer(iss)'s URI."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_VALIDATION_METHOD("metastore.catalog.servlet.auth.oauth2.validation.method",
+        "hive.metastore.catalog.servlet.auth.oauth2.validation.method", "jwt", new StringSetValidator("jwt", "introspection"),
+        "How to evaluate an access token. When your authorization server issues opaque tokens or you need " +
+        "to consider additional security requirements such as token revocations, use introspection."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_AUDIENCE("metastore.catalog.servlet.auth.oauth2.audience",
+        "hive.metastore.catalog.servlet.auth.oauth2.audience", "",
+        "The acceptable name in the audience(aud) claim."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_CLIENT_ID("metastore.catalog.servlet.auth.oauth2.client.id",
+        "hive.metastore.catalog.servlet.auth.oauth2.client.id", "",
+        "The client ID of HMS as a resource server. This is used on token introspection."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_CLIENT_SECRET("metastore.catalog.servlet.auth.oauth2.client.secret",
+        "hive.metastore.catalog.servlet.auth.oauth2.client.secret", "",
+        "The client secret of HMS as a resource server. This is used on token introspection."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_INTROSPECTION_CACHE_EXPIRY(
+        "metastore.catalog.servlet.auth.oauth2.introspection.cache.expiry",
+        "hive.metastore.catalog.servlet.auth.oauth2.introspection.cache.expiry", 60, TimeUnit.SECONDS,
+        "The expiry time of the token introspection cache. Set to 0 to disable caching."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_INTROSPECTION_CACHE_SIZE(
+        "metastore.catalog.servlet.auth.oauth2.introspection.cache.num",
+        "hive.metastore.catalog.servlet.auth.oauth2.introspection.cache.num", 1000L,
+        "The number of entries of the token introspection cache."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER("metastore.catalog.servlet.auth.oauth2.principal.mapper",
+        "hive.metastore.catalog.servlet.auth.oauth2.principal.mapper",
+        "org.apache.hadoop.hive.metastore.auth.oauth2.RegexOAuth2PrincipalMapper",
+        "The way to map an OAuth 2 claim set to a username."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_FIELD(
+        "metastore.catalog.servlet.auth.oauth2.principal.regex.username.field",
+        "hive.metastore.catalog.servlet.auth.oauth2.principal.mapper.regex.username.field", "sub",
+        "The claim name including a username. This is effective when you use RegexPrincipalMapper. For example, if you " +
+        "want to resolve a user name from the email claim, set this to email."
+    ),
+    CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_PATTERN(
+        "metastore.catalog.servlet.auth.oauth2.principal.mapper.regex.username.pattern",
+        "hive.metastore.catalog.servlet.auth.oauth2.principal.mapper.regex.username.pattern", "(.*)",
+        "The pattern to extract a user name. This is effective when you use RegexPrincipalMapper. For example, if " +
+        "you want to extract a user name from the local part of the email claim, set this to (.*)@example.com."
     ),
     ICEBERG_CATALOG_SERVLET_PATH("metastore.iceberg.catalog.servlet.path",
         "hive.metastore.iceberg.catalog.servlet.path", "iceberg",

@@ -1910,11 +1910,6 @@ public class MetastoreConf {
         "hive.metastore.catalog.servlet.auth.oauth2.introspection.cache.num", 1000L,
         "The number of entries of the token introspection cache."
     ),
-    CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER("metastore.catalog.servlet.auth.oauth2.principal.mapper",
-        "hive.metastore.catalog.servlet.auth.oauth2.principal.mapper",
-        "org.apache.hadoop.hive.metastore.auth.oauth2.RegexOAuth2PrincipalMapper",
-        "The way to map an OAuth 2 claim set to a username."
-    ),
     CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_FIELD(
         "metastore.catalog.servlet.auth.oauth2.principal.regex.username.field",
         "hive.metastore.catalog.servlet.auth.oauth2.principal.mapper.regex.username.field", "sub",

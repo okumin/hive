@@ -18,13 +18,9 @@
 
 package org.apache.hadoop.hive.metastore.auth.oauth2;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.nimbusds.oauth2.sdk.token.BearerTokenError;
 import java.util.regex.Pattern;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.auth.HttpAuthenticationException;
-import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
-import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
 
 /**
  * The regex-based principal mapper.
@@ -33,15 +29,6 @@ public class RegexOAuth2PrincipalMapper implements OAuth2PrincipalMapper {
   private final String claimName;
   private final Pattern pattern;
 
-  public RegexOAuth2PrincipalMapper(Configuration conf) {
-    this(
-        MetastoreConf.getAsString(conf, ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_FIELD),
-        Pattern.compile(MetastoreConf.getAsString(conf,
-            ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_PATTERN))
-    );
-  }
-
-  @VisibleForTesting
   RegexOAuth2PrincipalMapper(String claimName, Pattern pattern) {
     this.claimName = claimName;
     this.pattern = pattern;

@@ -20,15 +20,14 @@ package org.apache.hadoop.hive.metastore;
 import static javax.ws.rs.core.HttpHeaders.WWW_AUTHENTICATE;
 
 import com.google.common.base.Preconditions;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.auth.HttpAuthenticationException;
 import org.apache.hadoop.hive.metastore.auth.jwt.SimpleJWTAuthenticator;
 import org.apache.hadoop.hive.metastore.auth.oauth2.OAuth2Authenticator;
+import org.apache.hadoop.hive.metastore.auth.oauth2.OAuth2AuthenticatorFactory;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
-import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -127,9 +126,7 @@ public class ServletSecurity {
       }
     } else if (authType == AuthType.OAUTH2 && oAuth2Authenticator == null) {
       try {
-        final var factory = Class.forName(MetastoreConf.getVar(conf, ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_FACTORY));
-        Method method = factory.getMethod("createAuthenticator", Configuration.class);
-        oAuth2Authenticator = (OAuth2Authenticator) method.invoke(null, conf);
+        oAuth2Authenticator = OAuth2AuthenticatorFactory.createAuthenticator(this.conf);
       } catch (Exception e) {
         throw new ServletException("Failed to initialize ServletSecurity.", e);
       }

@@ -29,10 +29,10 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
-import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * A factory to create an {@link OAuth2Authenticator} instance based on the configuration.
@@ -49,9 +49,12 @@ public class OAuth2AuthenticatorFactory {
       throw new IOException("Failed to resolve the authorization server metadata. " +
           "Please check %s/.well-known/oauth-authorization-server is available".formatted(issuer), e);
     }
-    final var clazz = MetastoreConf.getClass(conf, ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER,
-        RegexOAuth2PrincipalMapper.class, OAuth2PrincipalMapper.class);
-    final var principalMapper = ReflectionUtils.newInstance(clazz, conf, new Class[]{ Configuration.class }, conf);
+
+    final var claim = MetastoreConf.getAsString(conf,
+        ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_FIELD);
+    final var pattern = Pattern.compile(MetastoreConf.getAsString(conf,
+            ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_PRINCIPAL_MAPPER_REGEX_PATTERN));
+    final var principalMapper = new RegexOAuth2PrincipalMapper(claim, pattern);
 
     final var validation = MetastoreConf.getAsString(conf, ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_VALIDATION_METHOD);
     switch (validation) {

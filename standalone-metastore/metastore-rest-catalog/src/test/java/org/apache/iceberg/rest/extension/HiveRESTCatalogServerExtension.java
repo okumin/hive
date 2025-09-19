@@ -77,6 +77,10 @@ public class HiveRESTCatalogServerExtension implements BeforeAllCallback, Before
     }
   }
 
+  public Configuration getConf() {
+    return conf;
+  }
+
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {
     if (jwksServer != null) {

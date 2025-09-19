@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.metastore.MetaStoreSchemaInfo;
 import org.apache.hadoop.hive.metastore.ServletSecurity.AuthType;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
@@ -45,7 +46,8 @@ public class HiveRESTCatalogServerExtension implements BeforeAllCallback, Before
   private final OAuth2AuthorizationServer authorizationServer;
   private final RESTCatalogServer restCatalogServer;
 
-  private HiveRESTCatalogServerExtension(AuthType authType, Map<String, String> configurations) {
+  private HiveRESTCatalogServerExtension(AuthType authType, Class<? extends MetaStoreSchemaInfo> schemaInfoClass,
+      Map<String, String> configurations) {
     this.conf = MetastoreConf.newMetastoreConf();
     MetastoreConf.setVar(conf, ConfVars.CATALOG_SERVLET_AUTH, authType.name());
     if (authType == AuthType.JWT) {
@@ -70,6 +72,9 @@ public class HiveRESTCatalogServerExtension implements BeforeAllCallback, Before
     }
     configurations.forEach(conf::set);
     restCatalogServer = new RESTCatalogServer();
+    if (schemaInfoClass != null) {
+      restCatalogServer.setSchemaInfoClass(schemaInfoClass);
+    }
   }
 
   @Override
@@ -134,10 +139,16 @@ public class HiveRESTCatalogServerExtension implements BeforeAllCallback, Before
 
   public static class Builder {
     private final AuthType authType;
+    private Class<? extends MetaStoreSchemaInfo> metaStoreSchemaClass;
     private final Map<String, String> configurations = new HashMap<>();
 
     private Builder(AuthType authType) {
       this.authType = authType;
+    }
+
+    public Builder addMetaStoreSchemaClassName(Class<? extends MetaStoreSchemaInfo> metaStoreSchemaClass) {
+      this.metaStoreSchemaClass = metaStoreSchemaClass;
+      return this;
     }
 
     public Builder configure(String key, String value) {
@@ -146,7 +157,7 @@ public class HiveRESTCatalogServerExtension implements BeforeAllCallback, Before
     }
 
     public HiveRESTCatalogServerExtension build() {
-      return new HiveRESTCatalogServerExtension(authType, configurations);
+      return new HiveRESTCatalogServerExtension(authType, metaStoreSchemaClass, configurations);
     }
   }
 

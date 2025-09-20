@@ -104,7 +104,7 @@ public class HMSCatalogFactory {
     String authType = MetastoreConf.getVar(configuration, ConfVars.CATALOG_SERVLET_AUTH);
     // Iceberg REST client uses "catalog" by default
     List<String> scopes = Collections.singletonList("catalog");
-    ServletSecurity security = new ServletSecurity(AuthType.fromString(authType), configuration, (req) -> scopes);
+    ServletSecurity security = new ServletSecurity(AuthType.fromString(authType), configuration, req -> scopes);
     return security.proxy(new HMSCatalogServlet(new HMSCatalogAdapter(catalog)));
   }
 

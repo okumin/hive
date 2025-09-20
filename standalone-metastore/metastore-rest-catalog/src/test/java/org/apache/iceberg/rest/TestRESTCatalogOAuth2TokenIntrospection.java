@@ -55,7 +55,7 @@ class TestRESTCatalogOAuth2TokenIntrospection extends BaseRESTCatalogTests {
         "rest.auth.type", "oauth2",
         "token", REST_CATALOG_EXTENSION.getOAuth2AccessToken()
     );
-    RCKUtils.initCatalogClient(properties).listNamespaces();
+    Assertions.assertFalse(RCKUtils.initCatalogClient(properties).listNamespaces().isEmpty());
   }
 
   @Test

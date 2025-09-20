@@ -264,34 +264,37 @@ public class ServletSecurity {
 
   private String extractUserName(HttpServletRequest request, HttpServletResponse response)
       throws HttpAuthenticationException {
-    if (authType == AuthType.SIMPLE) {
-      String userFromHeader = request.getHeader(X_USER);
-      if (userFromHeader == null || userFromHeader.isEmpty()) {
-        throw new HttpAuthenticationException("User header " + X_USER + " missing in request");
-      }
-      return userFromHeader;
-    } else if (authType == AuthType.JWT) {
-      String signedJwt = extractBearerToken(request, response);
-      if (signedJwt == null) {
-        throw new HttpAuthenticationException("Couldn't find bearer token in the auth header in the request");
-      }
-      String user;
-      try {
-        user = jwtAuthenticator.resolveUserName(signedJwt);
-        Preconditions.checkNotNull(user, "JWT needs to contain the user name as subject");
-        Preconditions.checkState(!user.isEmpty(), "User name should not be empty in JWT");
-        LOG.info("Successfully validated and extracted user name {} from JWT in Auth "
-            + "header in the request", user);
-      } catch (Exception e) {
-        throw new HttpAuthenticationException("Failed to validate JWT from Bearer token in "
-            + "Authentication header", e);
-      }
-      return user;
-    } else if (authType == AuthType.OAUTH2) {
-      String accessToken = extractBearerToken(request, response);
-      return oAuth2Authenticator.resolveUserName(accessToken, scopeProvider.apply(request));
-    } else {
-      throw new IllegalArgumentException("Unexpected auth type: " + authType);
+    switch (authType) {
+      case NONE:
+        throw new IllegalArgumentException("This method should not be called when auth type is NONE");
+      case SIMPLE:
+        String userFromHeader = request.getHeader(X_USER);
+        if (userFromHeader == null || userFromHeader.isEmpty()) {
+          throw new HttpAuthenticationException("User header " + X_USER + " missing in request");
+        }
+        return userFromHeader;
+      case JWT:
+        String signedJwt = extractBearerToken(request, response);
+        if (signedJwt == null) {
+          throw new HttpAuthenticationException("Couldn't find bearer token in the auth header in the request");
+        }
+        String user;
+        try {
+          user = jwtAuthenticator.resolveUserName(signedJwt);
+          Preconditions.checkNotNull(user, "JWT needs to contain the user name as subject");
+          Preconditions.checkState(!user.isEmpty(), "User name should not be empty in JWT");
+          LOG.info("Successfully validated and extracted user name {} from JWT in Auth "
+              + "header in the request", user);
+        } catch (Exception e) {
+          throw new HttpAuthenticationException("Failed to validate JWT from Bearer token in "
+              + "Authentication header", e);
+        }
+        return user;
+      case OAUTH2:
+        String accessToken = extractBearerToken(request, response);
+        return oAuth2Authenticator.resolveUserName(accessToken, scopeProvider.apply(request));
+      default:
+        throw new IllegalArgumentException("Unknown auth type: " + authType);
     }
   }
 

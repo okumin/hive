@@ -61,13 +61,13 @@ public class TestTokenIntrospectionAuthenticator {
       Pattern.compile("(.*)@example.com"));
 
   private static GenericContainer<?> container;
-  private static URI INTROSPECTION_ENDPOINT;
-  private static String ACCESS_TOKEN;
-  private static String ACCESS_TOKEN_EXPIRED;
-  private static String ACCESS_TOKEN_WITH_WRONG_ISSUER;
-  private static String ACCESS_TOKEN_WITH_WRONG_AUDIENCE;
-  private static String ACCESS_TOKEN_WITH_MISSING_SCOPE;
-  private static String ACCESS_TOKEN_WITH_INSUFFICIENT_SCOPE;
+  private static URI introspectionEndpoint;
+  private static String accessToken;
+  private static String accessTokenExpired;
+  private static String accessTokenWithWrongIssuer;
+  private static String accessTokenWithWrongAudience;
+  private static String accessTokenWithMissingScope;
+  private static String accessTokenWithInsufficientScope;
 
   private static RealmResource createRealm(Keycloak keycloak, String realmName) {
     var realm = new RealmRepresentation();
@@ -173,7 +173,7 @@ public class TestTokenIntrospectionAuthenticator {
     var realm = createRealm(keycloak, realmName);
     var wrongRealmName = "hive-another";
     var wrongRealm = createRealm(keycloak, wrongRealmName);
-    INTROSPECTION_ENDPOINT = new URI("%s/realms/hive/protocol/openid-connect/token/introspect".formatted(base));
+    introspectionEndpoint = new URI("%s/realms/hive/protocol/openid-connect/token/introspect".formatted(base));
 
     createResourceServer(realm);
     createResourceServer(wrongRealm);
@@ -201,14 +201,14 @@ public class TestTokenIntrospectionAuthenticator {
     createClient(realm, wrongAudienceClientId, wrongAudienceClientSecret,
         List.of("read", "update", "delete"), List.of(wrongAudience, email));
 
-    ACCESS_TOKEN = getAccessToken(base, realmName, clientId, clientSecret, SCOPES);
-    ACCESS_TOKEN_EXPIRED = getAccessToken(base, realmName, expiredClientId, expiredClientSecret, SCOPES);
+    accessToken = getAccessToken(base, realmName, clientId, clientSecret, SCOPES);
+    accessTokenExpired = getAccessToken(base, realmName, expiredClientId, expiredClientSecret, SCOPES);
     TimeUnit.SECONDS.sleep(5);
-    ACCESS_TOKEN_WITH_WRONG_ISSUER = getAccessToken(base, wrongRealmName, clientId, clientSecret, SCOPES);
-    ACCESS_TOKEN_WITH_WRONG_AUDIENCE = getAccessToken(base, realmName, wrongAudienceClientId, wrongAudienceClientSecret,
+    accessTokenWithWrongIssuer = getAccessToken(base, wrongRealmName, clientId, clientSecret, SCOPES);
+    accessTokenWithWrongAudience = getAccessToken(base, realmName, wrongAudienceClientId, wrongAudienceClientSecret,
         SCOPES);
-    ACCESS_TOKEN_WITH_MISSING_SCOPE = getAccessToken(base, realmName, clientId, clientSecret, null);
-    ACCESS_TOKEN_WITH_INSUFFICIENT_SCOPE = getAccessToken(base, realmName, clientId, clientSecret,
+    accessTokenWithMissingScope = getAccessToken(base, realmName, clientId, clientSecret, null);
+    accessTokenWithInsufficientScope = getAccessToken(base, realmName, clientId, clientSecret,
         List.of("read", "delete"));
   }
 
@@ -221,18 +221,18 @@ public class TestTokenIntrospectionAuthenticator {
 
   @Test
   public void testSuccess() throws HttpAuthenticationException {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
-    var actual = authenticator.resolveUserName(ACCESS_TOKEN, SCOPES);
+    var actual = authenticator.resolveUserName(accessToken, SCOPES);
     Assert.assertEquals(USERNAME, actual);
   }
 
   @Test
   public void testExpired() {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
     var error = Assert.assertThrows(HttpAuthenticationException.class,
-        () -> authenticator.resolveUserName(ACCESS_TOKEN_EXPIRED, SCOPES));
+        () -> authenticator.resolveUserName(accessTokenExpired, SCOPES));
     Assert.assertEquals("The token is not active", error.getMessage());
     Assert.assertEquals(401, error.getStatusCode());
     Assert.assertEquals(Optional.of(
@@ -242,7 +242,7 @@ public class TestTokenIntrospectionAuthenticator {
 
   @Test
   public void testNullToken() {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
     var error = Assert.assertThrows(HttpAuthenticationException.class,
         () -> authenticator.resolveUserName(null, SCOPES));
@@ -253,10 +253,10 @@ public class TestTokenIntrospectionAuthenticator {
 
   @Test
   public void testWrongIssuer() {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
     var error = Assert.assertThrows(HttpAuthenticationException.class,
-        () -> authenticator.resolveUserName(ACCESS_TOKEN_WITH_WRONG_ISSUER, SCOPES));
+        () -> authenticator.resolveUserName(accessTokenWithWrongIssuer, SCOPES));
     Assert.assertEquals("The token is not active", error.getMessage());
     Assert.assertEquals(401, error.getStatusCode());
     Assert.assertEquals(Optional.of(
@@ -266,10 +266,10 @@ public class TestTokenIntrospectionAuthenticator {
 
   @Test
   public void testWrongAudience() {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
     var error = Assert.assertThrows(HttpAuthenticationException.class,
-        () -> authenticator.resolveUserName(ACCESS_TOKEN_WITH_WRONG_AUDIENCE, SCOPES));
+        () -> authenticator.resolveUserName(accessTokenWithWrongAudience, SCOPES));
     Assert.assertEquals("The aud is invalid: [http://localhost:8080/wrong]",
         error.getMessage());
     Assert.assertEquals(401, error.getStatusCode());
@@ -280,10 +280,10 @@ public class TestTokenIntrospectionAuthenticator {
 
   @Test
   public void testMissingScope() {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
     var error = Assert.assertThrows(HttpAuthenticationException.class,
-        () -> authenticator.resolveUserName(ACCESS_TOKEN_WITH_MISSING_SCOPE, SCOPES));
+        () -> authenticator.resolveUserName(accessTokenWithMissingScope, SCOPES));
     Assert.assertEquals("This resource requires the following scopes: [read, update]",
         error.getMessage());
     Assert.assertEquals(403, error.getStatusCode());
@@ -294,10 +294,10 @@ public class TestTokenIntrospectionAuthenticator {
 
   @Test
   public void testInsufficientScope() {
-    var authenticator = new TokenIntrospectionAuthenticator(INTROSPECTION_ENDPOINT, new Audience(AUDIENCE),
+    var authenticator = new TokenIntrospectionAuthenticator(introspectionEndpoint, new Audience(AUDIENCE),
         RESOURCE_SERVER_CREDENTIAL, PRINCIPAL_MAPPER, Duration.ofMinutes(1), 10);
     var error = Assert.assertThrows(HttpAuthenticationException.class,
-        () -> authenticator.resolveUserName(ACCESS_TOKEN_WITH_INSUFFICIENT_SCOPE, SCOPES));
+        () -> authenticator.resolveUserName(accessTokenWithInsufficientScope, SCOPES));
     Assert.assertEquals("Insufficient scopes: [update]", error.getMessage());
     Assert.assertEquals(403, error.getStatusCode());
     Assert.assertEquals(Optional.of(

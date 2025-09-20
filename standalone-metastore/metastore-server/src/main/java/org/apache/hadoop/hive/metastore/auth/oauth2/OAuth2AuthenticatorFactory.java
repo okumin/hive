@@ -38,6 +38,10 @@ import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
  * A factory to create an {@link OAuth2Authenticator} instance based on the configuration.
  */
 public class OAuth2AuthenticatorFactory {
+  private OAuth2AuthenticatorFactory() {
+    throw new AssertionError();
+  }
+
   public static OAuth2Authenticator createAuthenticator(Configuration conf) throws IOException {
     final var issuer = Issuer.parse(MetastoreConf.getAsString(conf, ConfVars.CATALOG_SERVLET_AUTH_OAUTH2_ISSUER));
     Objects.requireNonNull(issuer);

@@ -138,8 +138,8 @@ public class TokenIntrospectionAuthenticator implements OAuth2Authenticator {
     }
     if (!response.indicatesSuccess()) {
       final var error = response.toErrorResponse().getErrorObject();
-      final var wwwAuthenticateHeader = error instanceof TokenSchemeError
-          ? ((TokenSchemeError) error).toWWWAuthenticateHeader() : null;
+      final var wwwAuthenticateHeader = error instanceof TokenSchemeError tokenSchemeError
+          ? tokenSchemeError.toWWWAuthenticateHeader() : null;
       throw new HttpAuthenticationException("Failed to introspect the token", error.getHTTPStatusCode(),
           wwwAuthenticateHeader);
     }

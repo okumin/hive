@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hive.metastore.auth.jwt;
 
+import com.google.common.collect.Sets;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.proc.BadJOSEException;
@@ -27,7 +28,6 @@ import java.net.URL;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 public class SimpleJWTAuthenticator {
   private static final Logger LOG = LoggerFactory.getLogger(SimpleJWTAuthenticator.class.getName());
+  private static final Set<JOSEObjectType> ACCEPTABLE_TYPES = Sets.newHashSet(null, JOSEObjectType.JWT);
 
   private final JWTValidator validator;
 
@@ -53,10 +54,7 @@ public class SimpleJWTAuthenticator {
       jwksURLs.add(URI.create(url).toURL());
       LOG.info("Loaded JWKS from {}", url);
     }
-    final Set<JOSEObjectType> acceptableTypes = new HashSet<>();
-    acceptableTypes.add(null);
-    acceptableTypes.add(JOSEObjectType.JWT);
-    final var validator = new JWTValidator(acceptableTypes, jwksURLs, null, null, Collections.singleton("sub"));
+    final var validator = new JWTValidator(ACCEPTABLE_TYPES, jwksURLs, null, null, Collections.singleton("sub"));
     return new SimpleJWTAuthenticator(validator);
   }
 

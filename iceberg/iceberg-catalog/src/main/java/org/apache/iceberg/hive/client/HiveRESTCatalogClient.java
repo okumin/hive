@@ -33,6 +33,9 @@ import org.apache.hadoop.hive.metastore.api.DropDatabaseRequest;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.GetTableRequest;
+import org.apache.hadoop.hive.metastore.api.LockRequest;
+import org.apache.hadoop.hive.metastore.api.LockResponse;
+import org.apache.hadoop.hive.metastore.api.LockState;
 import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.PrincipalType;
 import org.apache.hadoop.hive.metastore.api.Table;
@@ -227,5 +230,10 @@ public class HiveRESTCatalogClient extends BaseMetaStoreClient {
   public void dropDatabase(DropDatabaseRequest req) {
     validateCurrentCatalog(req.getCatalogName());
     restCatalog.dropNamespace(Namespace.of(req.getName()));
+  }
+
+  @Override
+  public LockResponse lock(LockRequest request) {
+    return new LockResponse(request.getTxnid(), LockState.ACQUIRED);
   }
 }

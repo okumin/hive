@@ -114,6 +114,7 @@ public class HiveTableOperations extends BaseMetastoreTableOperations
       }
 
     } catch (TException e) {
+      HiveCatalog.checkAccessControlException(e);
       String errMsg =
           String.format("Failed to get table info from metastore %s.%s", database, tableName);
       throw new RuntimeException(errMsg, e);

@@ -104,6 +104,7 @@ final class HiveViewOperations extends BaseViewOperations implements HiveOperati
         throw new NoSuchViewException("View does not exist: %s.%s", database, viewName);
       }
     } catch (TException e) {
+      HiveCatalog.checkAccessControlException(e);
       String errMsg =
               String.format("Failed to get view info from metastore %s.%s", database, viewName);
       throw new RuntimeException(errMsg, e);

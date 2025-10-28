@@ -36,6 +36,7 @@ import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.PrincipalType;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.api.UnknownDBException;
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAccessControlException;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -52,6 +53,7 @@ import org.apache.iceberg.exceptions.NoSuchIcebergViewException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.FileIO;
@@ -164,6 +166,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to list all tables under namespace " + namespace, e);
 
     } catch (InterruptedException e) {
@@ -196,6 +199,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to list all views under namespace " + namespace, e);
 
     } catch (InterruptedException e) {
@@ -250,6 +254,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       return false;
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to drop " + identifier, e);
 
     } catch (InterruptedException e) {
@@ -292,6 +297,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       LOG.info("Skipping drop, view does not exist: {}", identifier, e);
       return false;
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to drop view " + identifier, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -378,6 +384,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       }
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to rename " + from + " to " + to, e);
 
     } catch (InterruptedException e) {
@@ -426,6 +433,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
     } catch (NoSuchTableException | NoSuchObjectException e) {
       return false;
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to check table existence of " + baseTableIdentifier, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -449,6 +457,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
     } catch (NoSuchIcebergViewException | NoSuchObjectException e) {
       return false;
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to check view existence of " + viewIdentifier, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -483,6 +492,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
           e, "Namespace already exists: %s", namespace);
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to create namespace " + namespace + " in Hive Metastore", e);
 
     } catch (InterruptedException e) {
@@ -510,6 +520,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       return namespaces;
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to list all namespace: " + namespace + " in Hive Metastore",  e);
 
     } catch (InterruptedException e) {
@@ -544,6 +555,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       return false;
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to drop namespace " + namespace + " in Hive Metastore", e);
 
     } catch (InterruptedException e) {
@@ -604,6 +616,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException(e, "Namespace does not exist: %s", namespace);
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException(
           "Failed to list namespace under namespace: " + namespace + " in Hive Metastore", e);
 
@@ -629,6 +642,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException(e, "Namespace does not exist: %s", namespace);
 
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException("Failed to list namespace under namespace: " + namespace + " in Hive Metastore", e);
 
     } catch (InterruptedException e) {
@@ -692,6 +706,7 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException(
           e, "Namespace does not exist: %s", tableIdentifier.namespace().levels()[0]);
     } catch (TException e) {
+      checkAccessControlException(e);
       throw new RuntimeException(String.format("Metastore operation failed for %s", tableIdentifier), e);
 
     } catch (InterruptedException e) {
@@ -873,6 +888,12 @@ public class HiveCatalog extends BaseMetastoreViewCatalog
                 "Table with same name already exists: %s", identifier);
       }
       return super.create();
+    }
+  }
+
+  static void checkAccessControlException(TException error) {
+    if (error.getCause() instanceof HiveAccessControlException) {
+      throw new NotAuthorizedException(error.getMessage(), error);
     }
   }
 }

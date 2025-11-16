@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hive-metastore
+  name: hive-metastore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive-metastore
+  template:
+    metadata:
+      labels:
+        app: hive-metastore
+    spec:
+      containers:
+      - name: hive-metastore
+        image: hive:standalone-metastore-test
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: hadoop
+        - name: AWS_SECRET_ACCESS_KEY
+          value: dummy
+        - name: HADOOP_OPTIONAL_TOOLS
+          value: hadoop-aws
+        - name: SERVICE_OPTS
+          value: >-
+            -Dmetastore.warehouse.dir=s3a://test/warehouse
+        readinessProbe:
+          tcpSocket:
+            port: 9083
+        volumeMounts:
+        - name: hadoop-config
+          mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+      volumes:
+      - name: hadoop-config
+        configMap:
+          name: hadoop-config

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: beeline
+  name: beeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beeline
+  template:
+    metadata:
+      labels:
+        app: beeline
+    spec:
+      containers:
+      - name: loop
+        image: hive:test
+        command:
+        - sleep
+        args:
+        - infinity

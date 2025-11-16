@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hive
+  name: hive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive
+  template:
+    metadata:
+      labels:
+        app: hive
+    spec:
+      containers:
+      - name: hive
+        image: hive:test
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: hadoop
+        - name: AWS_SECRET_ACCESS_KEY
+          value: dummy
+        - name: HADOOP_OPTIONAL_TOOLS
+          value: hadoop-aws
+        - name: IS_RESUME
+          value: "true"
+        - name: SERVICE_NAME
+          value: hiveserver2
+        - name: SERVICE_OPTS
+          value: >-
+            -Dhive.metastore.uris=thrift://hive-metastore:9083
+        readinessProbe:
+          tcpSocket:
+            port: 10000
+        volumeMounts:
+        - name: hadoop-config
+          mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+      volumes:
+      - name: hadoop-config
+        configMap:
+          name: hadoop-config

@@ -1,0 +1,57 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hive-metastore
+  name: hive-metastore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive-metastore
+  template:
+    metadata:
+      labels:
+        app: hive-metastore
+    spec:
+      containers:
+      - name: hive-metastore
+        image: hive:standalone-metastore-test
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          value: hadoop
+        - name: AWS_SECRET_ACCESS_KEY
+          value: dummy
+        - name: HADOOP_OPTIONAL_TOOLS
+          value: hadoop-aws
+        - name: SERVICE_OPTS
+          value: >-
+            -Dmetastore.warehouse.dir=s3a://test/warehouse
+            -Dhive.metastore.warehouse.external.dir=s3a://test/warehouse
+        readinessProbe:
+          tcpSocket:
+            port: 9083
+        volumeMounts:
+        - name: hadoop-config
+          mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+      volumes:
+      - name: hadoop-config
+        configMap:
+          name: hadoop-config

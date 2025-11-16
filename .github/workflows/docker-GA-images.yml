@@ -112,34 +112,103 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and push Hive Image to docker hub
+      - name: Build Hive Image locally
         uses: docker/build-push-action@v4
         with:
           context: ./packaging/src/docker/
           file: ./packaging/src/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.namespace }}/hive:${{ env.tag }}
+          push: false
+          load: true
+          tags: hive:test
           build-args:
             |
             HIVE_VERSION=${{ env.HIVE_VERSION }}
             HADOOP_VERSION=${{ env.HADOOP_VERSION }}
             TEZ_VERSION=${{ env.TEZ_VERSION }}
             BUILD_ENV=${{ env.BUILD_ENV }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Build and push Standalone Metastore Image to docker hub
+      - name: Build Standalone Metastore Image locally
         uses: docker/build-push-action@v4
         with:
           context: ./standalone-metastore/packaging/src/docker/
           file: ./standalone-metastore/packaging/src/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.namespace }}/hive:standalone-metastore-${{ env.tag }}
+          push: false
+          load: true
+          tags: hive:standalone-metastore-test
           build-args:
             |
             HIVE_VERSION=${{ env.HIVE_VERSION }}
             HADOOP_VERSION=${{ env.HADOOP_VERSION }}
             BUILD_ENV=${{ env.BUILD_ENV }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create k8s cluster
+        uses: helm/kind-action@v1
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      #- name: Load images
+      #  run: kind load docker-image hive:test hive:standalone-metastore-test
+
+      - name: Deploy Ozone
+        run: |
+          helm repo add ozone https://apache.github.io/ozone-helm-charts/
+          helm install ozone ozone/ozone --version 0.2.0 --wait
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Deploy Hive
+        run: |
+          ./itests/test-docker/scripts/setup.sh
+
+      - name: Run JUnit
+        run: |
+          mvn test -Pitests -pl itests/test-docker 
+
+      - name: Test HiveServer2
+        run: |
+          ./itests/test-docker/scripts/test_hive_server2.sh
+
+      - name: Clean up Hive
+        run: |
+          ./itests/test-docker/scripts/teardown.sh
+
+      #- name: Build and push Hive Image to docker hub
+      #  uses: docker/build-push-action@v4
+      #  with:
+      #    context: ./packaging/src/docker/
+      #    file: ./packaging/src/docker/Dockerfile
+      #    platforms: linux/amd64,linux/arm64
+      #    push: true
+      #    tags: ${{ env.namespace }}/hive:${{ env.tag }}
+      #    build-args:
+      #      |
+      #      HIVE_VERSION=${{ env.HIVE_VERSION }}
+      #      HADOOP_VERSION=${{ env.HADOOP_VERSION }}
+      #      TEZ_VERSION=${{ env.TEZ_VERSION }}
+      #      BUILD_ENV=${{ env.BUILD_ENV }}
+
+      #- name: Build and push Standalone Metastore Image to docker hub
+      #  uses: docker/build-push-action@v4
+      #  with:
+      #    context: ./standalone-metastore/packaging/src/docker/
+      #    file: ./standalone-metastore/packaging/src/docker/Dockerfile
+      #    platforms: linux/amd64,linux/arm64
+      #    push: true
+      #    tags: ${{ env.namespace }}/hive:standalone-metastore-${{ env.tag }}
+      #    build-args:
+      #      |
+      #      HIVE_VERSION=${{ env.HIVE_VERSION }}
+      #      HADOOP_VERSION=${{ env.HADOOP_VERSION }}
+      #      BUILD_ENV=${{ env.BUILD_ENV }}
 
       - name: Dump disk usage on failure
         if: failure()

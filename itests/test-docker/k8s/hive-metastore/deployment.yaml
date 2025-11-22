@@ -42,8 +42,8 @@ spec:
           value: hadoop-aws
         - name: SERVICE_OPTS
           value: >-
-            -Dmetastore.warehouse.dir=s3a://test/warehouse
-            -Dhive.metastore.warehouse.external.dir=s3a://test/warehouse
+            -Dmetastore.warehouse.dir=s3a://test/test-warehouse
+            -Dhive.metastore.warehouse.external.dir=s3a://test/test-warehouse
         readinessProbe:
           tcpSocket:
             port: 9083

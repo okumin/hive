@@ -17,8 +17,6 @@
  */
 package org.apache.iceberg.rest;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,20 +24,14 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.metastore.IMetaStoreClient;
-import org.apache.hadoop.hive.metastore.client.builder.HiveMetaStoreClientBuilder;
-import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
-import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.catalog.CatalogTests;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.iceberg.catalog.Namespace;
 
 class HiveIcebergRESTCatalogClient {
+  private static Namespace DEFAULT_NS = Namespace.of("default");
+
   private final RESTCatalog restCatalog;
   private final Configuration conf;
-  private final IMetaStoreClient metaStoreClient;
 
   HiveIcebergRESTCatalogClient() throws Exception {
     this(Collections.emptyMap());
@@ -50,7 +42,6 @@ class HiveIcebergRESTCatalogClient {
     properties.put(CatalogProperties.URI, "http://localhost:9001/iceberg");
     restCatalog = RCKUtils.initCatalogClient(properties);
     conf = new Configuration(false);
-    MetastoreConf.setVar(conf, ConfVars.THRIFT_URIS, "thrift://localhost:9083");
     conf.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem");
     conf.set("fs.s3a.endpoint", "http://localhost:9878");
     conf.set("fs.s3a.path.style.access", "true");
@@ -59,7 +50,6 @@ class HiveIcebergRESTCatalogClient {
     conf.set("fs.s3a.access.key", "hadoop");
     conf.set("fs.s3a.secret.key", "dummy");
     conf.set("hadoop.tmp.dir", Files.createTempDirectory("hive-docker-test").toString());
-    metaStoreClient = new HiveMetaStoreClientBuilder(conf).newClient(false).build();
   }
 
   RESTCatalog getRestCatalog() {
@@ -67,18 +57,13 @@ class HiveIcebergRESTCatalogClient {
   }
 
   void cleanupWarehouse() throws Exception {
-    Path warehouseRoot = null;
-    for (String dbName : metaStoreClient.getAllDatabases()) {
-      for (String tblName : metaStoreClient.getAllTables(dbName)) {
-        metaStoreClient.dropTable(dbName, tblName, true, true, true);
-      }
-      if ("default".equals(dbName)) {
-        warehouseRoot = new Path(metaStoreClient.getDatabase(dbName).getLocationUri());
-      } else {
-        metaStoreClient.dropDatabase(dbName, true, true, true);
-      }
-    }
-    // Delete storage data explicitly since HiveCatalog#dropNamespace does not wipe them out
+    restCatalog.listNamespaces().stream().filter(namespace -> !DEFAULT_NS.equals(namespace)).forEach(namespace -> {
+      restCatalog.listTables(namespace).forEach(restCatalog::dropTable);
+      restCatalog.listViews(namespace).forEach(restCatalog::dropView);
+      restCatalog.dropNamespace(namespace);
+    });
+    // Delete the DB directories explicitly since HiveCatalog#dropNamespace does not wipe them out
+    var warehouseRoot = new Path("s3a://test/test-warehouse");
     var fs = warehouseRoot.getFileSystem(conf);
     if (!fs.exists(warehouseRoot)) {
       return;

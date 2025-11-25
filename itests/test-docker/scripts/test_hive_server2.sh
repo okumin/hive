@@ -16,9 +16,9 @@
 
 set -eux
 
-kubectl exec -i deployment/beeline -- beeline -u 'jdbc:hive2://hive:10000/' \
-  -e 'create table if not exists test (id int, name string) stored by iceberg'
-kubectl exec -i deployment/beeline -- beeline -u 'jdbc:hive2://hive:10000/' \
-  -e "insert into test values (1, 'aaa'), (2, 'bbb')"
-kubectl exec -i deployment/beeline -- beeline -u 'jdbc:hive2://hive:10000/' \
-  -e 'select * from test'
+kubectl exec deployment/beeline -- beeline -u 'jdbc:hive2://hive:10000/' \
+  -e 'create table if not exists test_hive_server2 (id int, name string) stored by iceberg'
+kubectl exec deployment/beeline -- beeline -u 'jdbc:hive2://hive:10000/' \
+  -e "insert into test_hive_server2 values (1, 'aaa'), (2, 'bbb')"
+kubectl exec deployment/beeline -- beeline -u 'jdbc:hive2://hive:10000/' \
+  -e 'select * from test_hive_server2'

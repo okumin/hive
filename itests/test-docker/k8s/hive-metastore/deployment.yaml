@@ -32,8 +32,7 @@ spec:
     spec:
       containers:
       - name: hive-metastore
-        #image: hive:standalone-metastore-test
-        image: apache/hive:standalone-metastore-4.2.0
+        image: hive:standalone-metastore-test
         env:
         - name: AWS_ACCESS_KEY_ID
           value: hadoop

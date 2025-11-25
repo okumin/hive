@@ -32,7 +32,8 @@ spec:
     spec:
       containers:
       - name: hive
-        image: hive:test
+        #image: hive:test
+        image: apache/hive:4.2.0
         env:
         - name: AWS_ACCESS_KEY_ID
           value: hadoop

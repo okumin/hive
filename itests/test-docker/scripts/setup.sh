@@ -31,11 +31,11 @@ helm repo add ozone https://apache.github.io/ozone-helm-charts/
 helm install ozone ozone/ozone --version 0.2.0 --wait
 # Wait for a while because Ozone's Helm chart does not have readiness probes...
 sleep 10
-if kubectl exec -it statefulset/ozone-om -- ozone sh bucket info "$BUCKET" >/dev/null 2>&1; then
+if kubectl exec statefulset/ozone-om -- ozone sh bucket info "$BUCKET" >/dev/null 2>&1; then
   echo "Bucket already exists. Skipping."
 else
   echo "Bucket does not exist. Creating..."
-  kubectl exec -it statefulset/ozone-om -- ozone sh bucket create "$BUCKET"
+  kubectl exec statefulset/ozone-om -- ozone sh bucket create "$BUCKET"
 fi
 
 base_dir=$(dirname "$(cd "$(dirname "$0")" || exit; pwd)")

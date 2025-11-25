@@ -32,10 +32,14 @@ spec:
     spec:
       containers:
       - name: loop
-        image: hive:test
+        #image: hive:test
+        image: apache/hive:4.2.0
         command:
         - timeout
         args:
         - infinity
         - sleep
         - infinity
+        env:
+        - name: TERM
+          value: dumb

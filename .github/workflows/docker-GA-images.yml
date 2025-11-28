@@ -65,6 +65,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 21
+          cache: maven
 
       - name: Prepare environment variables for Workflow Dispatch
         if: github.event_name == 'workflow_dispatch'

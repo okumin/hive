@@ -126,6 +126,8 @@ jobs:
             HADOOP_VERSION=${{ env.HADOOP_VERSION }}
             TEZ_VERSION=${{ env.TEZ_VERSION }}
             BUILD_ENV=${{ env.BUILD_ENV }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push Standalone Metastore Image to docker hub
         uses: docker/build-push-action@v4

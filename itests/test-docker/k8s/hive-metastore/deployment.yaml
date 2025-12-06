@@ -30,28 +30,49 @@ spec:
       labels:
         app: hive-metastore
     spec:
+      initContainers:
+      - name: download-aws-sdk
+        image: ubuntu:26.04
+        command:
+        - /bin/bash
+        args:
+        - -c
+        - |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates wget
+          wget https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.26.19/bundle-2.26.19.jar -P /tmp/ext-jars
+        volumeMounts:
+        - name: ext-jars
+          mountPath: /tmp/ext-jars
       containers:
       - name: hive-metastore
         image: hive:standalone-metastore-test
         env:
-        - name: AWS_ACCESS_KEY_ID
-          value: hadoop
-        - name: AWS_SECRET_ACCESS_KEY
-          value: dummy
         - name: HADOOP_OPTIONAL_TOOLS
           value: hadoop-aws
-        - name: SERVICE_OPTS
-          value: >-
-            -Dmetastore.warehouse.dir=s3a://test/test-warehouse
-            -Dhive.metastore.warehouse.external.dir=s3a://test/test-warehouse
+        - name: HIVE_CUSTOM_CONF_DIR
+          value: /etc/hive/conf
         readinessProbe:
           tcpSocket:
             port: 9083
         volumeMounts:
+        - name: ext-jars
+          mountPath: /tmp/ext-jars
         - name: hadoop-config
-          mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+          mountPath: /etc/hive/conf/core-site.xml
           subPath: core-site.xml
+        - name: hive-metastore-config
+          mountPath: /etc/hive/conf/metastore-site.xml
+          subPath: metastore-site.xml
+        - name: hive-metastore-config
+          mountPath: /etc/hive/conf/metastore-log4j2.properties
+          subPath: metastore-log4j2.properties
       volumes:
+      - name: ext-jars
+        emptyDir: {}
       - name: hadoop-config
         configMap:
           name: hadoop-config
+      - name: hive-metastore-config
+        configMap:
+          name: hive-metastore-config

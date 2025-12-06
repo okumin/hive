@@ -17,32 +17,28 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: hadoop-config
+  name: hive-metastore-config
 data:
-  core-site.xml: |
+  metastore-site.xml: |
     <configuration>
       <property>
-        <name>fs.s3a.endpoint</name>
-        <value>http://ozone-s3g-rest:9878</value>
+        <name>metastore.warehouse.dir</name>
+        <value>s3a://test/test-warehouse</value>
       </property>
       <property>
-        <name>fs.s3a.path.style.access</name>
-        <value>true</value>
+        <name>hive.metastore.warehouse.external.dir</name>
+        <value>s3a://test/test-warehouse</value>
       </property>
       <property>
-        <name>fs.s3a.change.detection.version.required</name>
+        <name>metastore.event.db.notification.api.auth</name>
         <value>false</value>
       </property>
       <property>
-        <name>fs.s3a.change.detection.mode</name>
+        <name>metastore.catalog.servlet.port</name>
+        <value>9001</value>
+      </property>
+      <property>
+        <name>metastore.catalog.servlet.auth</name>
         <value>none</value>
-      </property>
-      <property>
-        <name>fs.s3a.access.key</name>
-        <value>hadoop</value>
-      </property>
-      <property>
-        <name>fs.s3a.secret.key</name>
-        <value>dummy</value>
       </property>
     </configuration>

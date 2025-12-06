@@ -30,31 +30,57 @@ spec:
       labels:
         app: hive
     spec:
+      initContainers:
+      - name: download-aws-sdk
+        image: ubuntu:26.04
+        command:
+        - /bin/bash
+        args:
+        - -c
+        - |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates wget
+          wget https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.26.19/bundle-2.26.19.jar -P /tmp/ext-jars
+        volumeMounts:
+        - name: ext-jars
+          mountPath: /tmp/ext-jars
       containers:
       - name: hive
         image: hive:test
         env:
+        - name: HADOOP_OPTIONAL_TOOLS
+          value: hadoop-aws
         - name: AWS_ACCESS_KEY_ID
           value: hadoop
         - name: AWS_SECRET_ACCESS_KEY
           value: dummy
-        - name: HADOOP_OPTIONAL_TOOLS
-          value: hadoop-aws
         - name: IS_RESUME
           value: "true"
         - name: SERVICE_NAME
           value: hiveserver2
-        - name: SERVICE_OPTS
-          value: >-
-            -Dhive.metastore.uris=thrift://hive-metastore:9083
+        - name: HIVE_CUSTOM_CONF_DIR
+          value: /etc/hive/conf
         readinessProbe:
           tcpSocket:
             port: 10000
         volumeMounts:
+        - name: ext-jars
+          mountPath: /tmp/ext-jars
         - name: hadoop-config
-          mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+          mountPath: /etc/hive/conf/core-site.xml
           subPath: core-site.xml
+        - name: hive-config
+          mountPath: /etc/hive/conf/hive-site.xml
+          subPath: hive-site.xml
+        - name: hive-config
+          mountPath: /etc/hive/conf/hive-log4j2.properties
+          subPath: hive-log4j2.properties
       volumes:
+      - name: ext-jars
+        emptyDir: {}
       - name: hadoop-config
         configMap:
           name: hadoop-config
+      - name: hive-config
+        configMap:
+          name: hive-config

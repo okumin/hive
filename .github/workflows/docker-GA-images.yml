@@ -158,6 +158,8 @@ jobs:
         run: |
           free -h
           ps aux --sort -rss | head -n 30
+          mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests#testLoadNamespaceMetadata -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
+          mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
           mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTViewCatalogTests
 
       - name: Test HiveServer2

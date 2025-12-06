@@ -156,11 +156,11 @@ jobs:
 
       - name: Run JUnit
         run: |
-          free -h
-          ps aux --sort -rss | head -n 30
-          mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests#testLoadNamespaceMetadata -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
-          mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
-          mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTViewCatalogTests
+          #mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests#testLoadNamespaceMetadata -Dorg.slf4j.simpleLogger.defaultLogLevel=INFO
+          #mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests#testLoadTable -Dorg.slf4j.simpleLogger.defaultLogLevel=INFO
+          #mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTCatalogTests -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
+          #mvn test -B -Pitests -pl itests/test-docker -Dtest=HiveIcebergRESTViewCatalogTests
+          mvn test -B -Pitests -pl itests/test-docker
 
       - name: Test HiveServer2
         run: |
@@ -200,9 +200,13 @@ jobs:
       #      BUILD_ENV=${{ env.BUILD_ENV }}
 
       - name: Dump disk usage on failure
-        if: failure()
+        if: failure() || cancelled()
         run: |
           df -h
           du -xh / --max-depth=3 2>/dev/null | sort -h | tail -50
           free -h
           ps aux --sort -rss | head -n 30
+          kubectl get pods
+          kubectl logs ozone-om-0
+          kubectl logs ozone-s3g-0
+          kubectl logs ozone-datanode-0

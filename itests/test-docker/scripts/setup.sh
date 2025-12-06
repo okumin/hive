@@ -28,7 +28,7 @@ wait_and_monitor_deployment() {
 }
 
 helm repo add ozone https://apache.github.io/ozone-helm-charts/
-helm install ozone ozone/ozone --version 0.2.0 --wait
+helm install ozone ozone/ozone --version 0.2.0 --values itests/test-docker/helm/ozone/values.yaml --wait
 # Wait for a while because Ozone's Helm chart does not have readiness probes...
 sleep 10
 if kubectl exec statefulset/ozone-om -- ozone sh bucket info "$BUCKET" >/dev/null 2>&1; then

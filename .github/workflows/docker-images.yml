@@ -225,3 +225,4 @@ jobs:
           free -h
           ps aux --sort -rss | head -n 30
           kubectl get pods
+          kubectl logs deployment/hive-metastore

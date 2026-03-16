@@ -40,7 +40,7 @@ spec:
         - |
           apt-get update
           apt-get install -y --no-install-recommends ca-certificates wget
-          wget https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.26.19/bundle-2.26.19.jar -P /tmp/ext-jars
+          wget https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.41.3/bundle-2.41.3.jar -P /tmp/ext-jars
         volumeMounts:
         - name: ext-jars
           mountPath: /tmp/ext-jars
